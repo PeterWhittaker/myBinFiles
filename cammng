@@ -6,19 +6,20 @@ if [ "${1}" = "debug" -o "${1}" = "-x" ]; then
     shift
 fi
 
-ourExec=$(basename $0)
-
-sourceDir=~/csdpac-workflows/template/tra-workflow/target
-targetDir=~/camunda/server/apache-tomcat-9.0.24/webapps
-theWar="Physical-TRA-workflow.war"
-sourceWar=${sourceDir}/${theWar}
-targetWar=${targetDir}/${theWar}
-
+# load handy functions, especially die
 [ -f ~/.bashMyFuncs ] && source ~/.bashMyFuncs || { echo Cannot proceed; exit 1; }
 
-# do we override our variables?
+# who are we?
+ourExec=$(basename $0)
+# what are we doing?
 ourConf=~/.${ourExec}.conf
-[ -f "${ourConf}" ] && { source "${ourConf}" || die "Cannot source ${ourConf}, exiting." ; } || echo "Using default values."
+[ -f "${ourConf}" ] && { source "${ourConf}" || die "Cannot source ${ourConf}, exiting." ; } || die "No '${ourConf}', exiting."
+# now we should be able to tell what we are really doing!
+[ -f "${realConf}" ] && { source "${realConf}" || die "Cannot source ${realConf}, exiting." ; } || die "No '${realConf}', exiting."
+# test that to be sure
+
+[[ -z $theWar ]] && die "Variable 'theWar' not set. Check '${realConf}'."
+[[ ! -f ${sourceDir} || ! -f ${targetDir} ]] && { echo; echo "WARNING! Missing source and target folders!"; }
 
 function camstart {
     { ss -t -l -n | grep -q 389  || { echo Starting docker too; ~/bin/myDocker start; } ; } || { echo could not start docker; exit 3; }
@@ -46,6 +47,16 @@ function warcopy {
     done
 }
 
+function listConfigs {
+    echo Available configurations:
+    echo
+    ls -lt ${ourConf}.*
+    echo
+    echo Current configuration is ${realConf}:
+    echo
+    cat ${realConf}
+}
+
 function chooseAnOption {
     cat << EOM
 
@@ -55,6 +66,8 @@ function chooseAnOption {
         3) Restart Camunda with a new war file
         4) Restart Camunda with the current war file
         5) Check the date of all war files
+        6) List available config files
+        q) Quit
     ??? (Note that other options are available from the command line.)
 EOM
     echo -n "Please enter your choice: "
@@ -75,6 +88,11 @@ EOM
             ;;
         5)
             option="lswars"
+            ;;
+        6)  option="listConfigs"
+            ;;
+        q|Q)
+            option="quit"
             ;;
         *)
             option="usage"
@@ -126,6 +144,13 @@ case $option in
         ;;
     debug|-x)
         echo "You should have specified those first; bit too late now."
+        ;;
+    listConfigs)
+        listConfigs
+        ;;
+    quit)
+        echo "Goodbye."
+        exit 0
         ;;
     *)
         echo "$0 [ debug | -x ] start | stop | (kick | restart) | newwar | warcopy | (lswar | curwar) | latestwar | lsthewar"
