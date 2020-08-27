@@ -1,0 +1,19 @@
+#!/bin/bash
+
+cd ~/ldap
+case $1 in
+    start|run)
+        ./run.sh
+        ;;
+    stop)
+        ./stop.sh
+        ;;
+    restart)
+        ./stop.sh
+        ./run.sh
+        ;;
+    *)
+        ls
+        ;;
+esac
+exit 0

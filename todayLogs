@@ -1,0 +1,26 @@
+#!/bin/bash
+
+todayIs="$(date '+%Y-%m-%d')"
+
+option="${1:-less}"
+
+case $option in
+    less)
+        less *${todayIs}*
+        ;;
+    ls)
+        ls -alt *${todayIs}*
+        ;;
+
+    list)
+        ls *${todayIs}*
+        ;;
+    grep)
+        grep -i ${2:-NOTHING} *${todayIs}*
+        ;;
+    *)
+        echo "Huh, what? What is '${option}'?"
+        exit 1
+        ;;
+esac
+exit $?

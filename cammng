@@ -1,0 +1,134 @@
+#!/bin/bash
+
+if [ "${1}" = "debug" -o "${1}" = "-x" ]; then
+    set -x
+    debug=true
+    shift
+fi
+
+ourExec=$(basename $0)
+
+sourceDir=~/csdpac-workflows/template/tra-workflow/target
+targetDir=~/camunda/server/apache-tomcat-9.0.24/webapps
+theWar="Physical-TRA-workflow.war"
+sourceWar=${sourceDir}/${theWar}
+targetWar=${targetDir}/${theWar}
+
+[ -f ~/.bashMyFuncs ] && source ~/.bashMyFuncs || { echo Cannot proceed; exit 1; }
+
+# do we override our variables?
+ourConf=~/.${ourExec}.conf
+[ -f "${ourConf}" ] && { source "${ourConf}" || die "Cannot source ${ourConf}, exiting." ; } || echo "Using default values."
+
+function camstart {
+    { ss -t -l -n | grep -q 389  || { echo Starting docker too; ~/bin/myDocker start; } ; } || { echo could not start docker; exit 3; }
+    # pww 2020-03-05 add a long delay, now that we have a much heavier docker
+    ~/camunda/start-camunda.sh ${ourDelay:-15}
+}
+function camstop {
+    ~/camunda/shutdown-camunda.sh
+}
+function latestwar {
+    ls -lit ${sourceDir}/*war |head -1
+}
+function lsTheWar {
+    ls -lit ${sourceDir}/${theWar} ${targetDir}/${theWar}
+}
+function lswars {
+    ls -lit ${sourceDir}/*war ${targetDir}/*war
+}
+function warcopy {
+    cp -p ${sourceWar} ${targetWar} || die "Could not copy $sourceWar to $targetWar"
+    jsSrcDir="${sourceDir}/Physical-TRA-workflow/assets/js"
+    jsTgtDir="${targetDir}/camunda/app/cockpit/scripts"
+    for file in config.js traflowCockpit.js ; do
+        cp ${jsSrcDir}/${file} ${jsTgtDir} || echo error copying $file
+    done
+}
+
+function chooseAnOption {
+    cat << EOM
+
+    Do you wish to
+        1) Start Camunda
+        2) Stop Camunda
+        3) Restart Camunda with a new war file
+        4) Restart Camunda with the current war file
+        5) Check the date of all war files
+    ??? (Note that other options are available from the command line.)
+EOM
+    echo -n "Please enter your choice: "
+    read answer
+    echo
+    case $answer in
+        1)
+            option="start"
+            ;;
+        2)
+            option="stop"
+            ;;
+        3)
+            option="newwar"
+            ;;
+        4)
+            option="restart"
+            ;;
+        5)
+            option="lswars"
+            ;;
+        *)
+            option="usage"
+            ;;
+    esac
+}
+
+option="${1}"
+[ -z "${option}" ] && chooseAnOption
+ourDelay="${2:-15}"
+
+shopt -s nocasematch
+case $option in
+    start)
+        camstart
+        ;;
+    stop)
+        camstop
+        ;;
+    stopall|hardstop)
+        camstop
+        ~/bin/myDocker stop
+        ;;
+    kick|restart)
+        camstop
+        camstart
+        ;;
+    hard|hardkick)
+        camstop
+        ~/bin/myDocker stop
+        camstart
+        ;;
+    checkwar|checkthewar|lsthewar)
+        lsTheWar
+        ;;
+    newwar)
+        camstop
+        warcopy
+        camstart
+        ;;
+    lswar|curwar|lswars|curwars)
+        lswars
+        ;;
+    latestwar)
+        latestwar
+        ;;
+    warcopy)
+        warcopy
+        ;;
+    debug|-x)
+        echo "You should have specified those first; bit too late now."
+        ;;
+    *)
+        echo "$0 [ debug | -x ] start | stop | (kick | restart) | newwar | warcopy | (lswar | curwar) | latestwar | lsthewar"
+        ;;
+esac
+echo

@@ -1,0 +1,33 @@
+#!/bin/bash
+
+cat << EOM
+# needs work
+#       need to define individual commands
+#       (currently using aliases...)
+#
+#       For eclipse and camunda, these should
+#       capture PIDs for later killing
+#
+#       invoke each individual command
+#       
+EOM
+exit
+
+case $1 in
+    start|run)
+        eclipse
+        modeler
+        camunda start
+        ;;
+    stop)
+        camunda stop
+        ;;
+    restart)
+        ./stop.sh
+        ./run.sh
+        ;;
+    *)
+        ls
+        ;;
+esac
+exit 0

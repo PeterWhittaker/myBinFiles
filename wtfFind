@@ -1,0 +1,16 @@
+#!/bin/bash
+
+cd
+homedir=$(pwd)
+WTF=${homedir}/.wtfCleanUp
+
+files=$(find $homedir -path ${WTF} -prune -o -type d -name camunda-h2-dbs -print)
+
+if [ -z "${files}" ]; then
+    echo "None found this time - yay?"
+    exit
+else
+    for file in $files ; do
+        echo ${file}
+    done
+fi

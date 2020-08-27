@@ -1,0 +1,26 @@
+#!/bin/bash
+
+cd
+homedir=$(pwd)
+WTF=${homedir}/.wtfCleanUp
+
+if [ ! -d "${WTF}" ]; then
+    mkdir "${WTF}" || {{ echo CANNOT CREATE FOLDER ${WTF}, GOODBYE ; exit }}
+fi
+
+files=$(find $homedir -path ${WTF} -prune -o -type d -name camunda-h2-dbs -print)
+
+if [ -z "${files}" ]; then
+    echo "None found this time - yay?"
+    exit
+else
+    cd "${WTF}"
+    counter=$(date '+%s')
+    for file in $files ; do
+        sourceDir=$(dirname $file)
+        ((counter++))
+        mkdir $counter
+        echo ${sourceDir} > $counter/sourceDir
+        mv $file $counter
+    done
+fi
