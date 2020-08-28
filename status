@@ -1,0 +1,45 @@
+#!/bin/bash
+
+myHome=~/bin
+myDir=$(dirname $0)
+cd $myDir || { echo "Cannot get to my ${myDir}, exiting."; exit 1; }
+myDir=$(pwd)
+#double check
+cd $myDir || { echo "Cannot get to my ${myDir}, exiting."; exit 3; }
+
+theManifest=${myDir}/manifest
+macOnly=""
+[[ ! -s ${theManifest} ]] && { echo "No manifest, very odd, exiting."; exit 5; }
+
+fileList=$(cat manifest)
+
+anyDiffs=no
+for file in $fileList; do
+    # really, we should make the body of this loop a function, and
+    # execute it once for the manifest and once for platform-specific
+    # files - this will work for now
+    [[ $file == $macOnly ]] && if ! isMacOS; then continue; fi
+    diff -q ${myHome}/${file} ${myDir}/${file} 2> /dev/null
+    rc=$?
+    if [[ $rc -ne 0 ]]; then
+        anyDiffs=yes
+        diff --color=always -u ${myHome}/${file} ${myDir}/${file}
+        read -p "Replace $file in ~? " answer
+        echo $answer
+        case $answer in
+            y*|Y*)
+                cp -p ${myDir}/${file} ${myHome}/${file}
+                ;;
+            swap)
+                cp -p ${myHome}/${file} ${myDir}/${file} 
+                ;;
+            *)
+                :
+                ;;
+        esac
+    fi
+done
+
+[[ ${anyDiffs} = no ]] && echo "No diffs, no need to change anything."
+
+
