@@ -19,7 +19,7 @@ ourConf=~/.${ourExec}.conf
 # test that to be sure
 
 [[ -z $theWar ]] && die "Variable 'theWar' not set. Check '${realConf}'."
-[[ ! -f ${sourceDir} || ! -f ${targetDir} ]] && { echo; echo "WARNING! Missing source and target folders!"; }
+[[ ! -d ${sourceDir} || ! -d ${targetDir} ]] && { echo; echo "WARNING! Missing source and target folders!"; }
 
 function camstart {
     { ss -t -l -n | grep -q 389  || { echo Starting docker too; ~/bin/myDocker start; } ; } || { echo could not start docker; exit 3; }
@@ -40,11 +40,11 @@ function lswars {
 }
 function warcopy {
     cp -p ${sourceWar} ${targetWar} || die "Could not copy $sourceWar to $targetWar"
-    jsSrcDir="${sourceDir}/Physical-TRA-workflow/assets/js"
-    jsTgtDir="${targetDir}/camunda/app/cockpit/scripts"
-    for file in config.js traflowCockpit.js ; do
-        cp ${jsSrcDir}/${file} ${jsTgtDir} || echo error copying $file
-    done
+    if [[ ! -z $cockpitModFiles ]]; then
+        for file in $cockpitModFiles ; do
+            cp ${jsSrcDir}/${file} ${jsTgtDir} || echo error copying $file
+        done
+    fi
 }
 
 function listConfigs {
