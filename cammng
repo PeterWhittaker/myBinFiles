@@ -5,6 +5,12 @@ if [ "${1}" = "debug" -o "${1}" = "-x" ]; then
     debug=true
     shift
 fi
+# we define this here and use it later; it might be ''
+# we do it now to set -u, defensively, just in case
+option="${1}"
+
+# get defensive
+set -u
 
 # load handy functions, especially die
 [ -f ~/.bashMyFuncs ] && source ~/.bashMyFuncs || { echo Cannot proceed; exit 1; }
@@ -39,11 +45,24 @@ function lswars {
     ls -lit ${sourceDir}/*war ${targetDir}/*war
 }
 function warcopy {
-    cp -p ${sourceWar} ${targetWar} || die "Could not copy $sourceWar to $targetWar"
+    sourceWar="${sourceDir}/${theWar}"
+    targetWar="${targetDir}/${theWar}"
+    cp -p ${sourceWar} ${targetWar} || die "Could not copy '${sourceWar}' to '${targetWar}'"
+    # this is a safety measure - unset, use, reset
+    set +u
+    cockpitModFiles="${cockpitModFiles}"
+    set -u
     if [[ ! -z $cockpitModFiles ]]; then
         for file in $cockpitModFiles ; do
             cp ${jsSrcDir}/${file} ${jsTgtDir} || echo error copying $file
         done
+    else
+        # if cockpitModFiles is empty, make sure we clean up any config.js
+        # left over from a previous war, e.g., going from tra->sample
+        rm -f ${jsTgtDir}/config.js
+        # what else is in the folder?
+        echo "Contents of '${jsTgtDir}': $(ls ${jsTgtDir})"
+        # we could automate this by parsing the config.js, but we won't, yet
     fi
 }
 
@@ -100,7 +119,7 @@ EOM
     esac
 }
 
-option="${1}"
+# option was defined above - we use it now
 [ -z "${option}" ] && chooseAnOption
 ourDelay="${2:-15}"
 
