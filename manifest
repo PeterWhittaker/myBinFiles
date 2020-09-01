@@ -18,3 +18,7 @@ isMacOS && addThis update
 
 # What about this?
 # todayLogs
+
+# odd construct, but we don't want to fail being sourced
+# because we aren't on one of the platforms above
+true
