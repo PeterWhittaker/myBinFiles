@@ -1,10 +1,20 @@
-cammng
-development
-dirtree
-getdef
-ldap
-myDocker
-todayLogs
-update
-wtfCleanUp
-wtfFind
+fileManifest=""
+
+addThis () {
+    fileManifest+=" $1"
+}
+
+addThis dirtree
+
+isMacOS && addThis update
+
+[[ -d /etc/selinux ]] && addThis getdef
+
+[[ -d ~/ldap ]] && addThis ldap
+[[ -d ~/docker ]] && addThis myDocker
+[[ -d ~/camunda ]] && addThis cammng
+[[ -d ~/camunda ]] && addThis wtfCleanUp
+[[ -d ~/camunda ]] && addThis wtfFind
+
+# What about this?
+# todayLogs
