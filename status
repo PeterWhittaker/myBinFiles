@@ -40,7 +40,7 @@ replaceOrSwap () {
 addMissing () {
     anyDiffs=yes
     echo "The file '${myHome}/${file}' does not exist;"
-    read -p "createit from '${myDir}/${file}'? " answer
+    read -p "create it from '${myDir}/${file}'? " answer
     case $answer in
         y*|Y*)
             cp -p ${myDir}/${file} ${myHome}/${file}
