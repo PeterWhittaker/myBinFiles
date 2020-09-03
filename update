@@ -1,14 +1,7 @@
 #!/bin/bash
 
-# source .bashrc to get function def'ns and a few other things
-. ~/.bashrc || { echo Could not source bashrc, exiting fatally; exit 1; }
-
-# Mac OS items
-if isMacOS; then
-    # brew install node
-    # npm install [-g] npm-check
-    # npm install [-g] eslint
-
+brewItems () {
+    type brew &> /dev/null || return
     runBrewCleanup () {
         read -p "Run 'brew cleanup'? " answer
         case $answer in
@@ -27,17 +20,26 @@ if isMacOS; then
     echo Checking brew....
     brew doctor || runBrewCleanup
     echo
+}
+
+gemItems () {
+    type gem &> /dev/null || return
     read -p "Ready to continue with gems (ctrl-c to skip)? " answer
     echo Updating gems
     gem update
-    echo
+    echo $gemProbs
+}
+
+nodeItems () {
+    type npm &> /dev/null || return
     read -p "Ready to continue with npm and node (ctrl-c to skip)? " answer
     npm-check -u -g
     npm-check -u
     node -v
     npm -v
-else
-    # Nothing else yet
-    echo "Nothing to do under '$OSTYPE'."
-fi
+}
+
+brewItems
+gemItems
+nodeItems
 
