@@ -5,8 +5,9 @@ addThis () {
 }
 
 addThis dirtree
+addThis getBrew
 
-isMacOS && addThis update
+type brew 2> /dev/null && addThis update
 
 [[ -d /etc/selinux ]] && addThis getdef
 
