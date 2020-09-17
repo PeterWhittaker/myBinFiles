@@ -28,7 +28,7 @@ ourConf=~/.${ourExec}.conf
 [[ ! -d ${sourceDir} || ! -d ${targetDir} ]] && { echo; echo "WARNING! Missing source and target folders!"; }
 
 function camstart {
-    { ss -t -l -n | grep -q 389  || { echo Starting docker too; ~/bin/myDocker start; } ; } || { echo could not start docker; exit 3; }
+    { dockerStatus > /dev/null || { echo Starting docker too; ~/bin/myDocker start; } ; } || { echo could not start docker; exit 3; }
     # pww 2020-03-05 add a long delay, now that we have a much heavier docker
     ~/camunda/start-camunda.sh ${ourDelay:-15}
 }
@@ -76,6 +76,25 @@ function listConfigs {
     cat ${realConf}
 }
 
+function camundaStatus {
+    rc=$(true)
+    pgrep -fi tomcat > /dev/null && echo Camunda should be active || { echo "No active Camunda, tomcat is not running."; rc=$(false); }
+    return $rc
+}
+
+function dockerStatus {
+    rc=$(true)
+    ss -t -l -n | grep -q 389  && echo LDAP active on this host || { echo "No LDAP on this host, is docker running?"; rc=$(false); }
+    return $rc
+}
+
+function status {
+    rc=$(true)
+    camundaStatus || rc=$(false)
+    dockerStatus  || rc=$(false)
+    return $rc
+}
+
 function chooseAnOption {
     cat << EOM
 
@@ -86,6 +105,7 @@ function chooseAnOption {
         4) Restart Camunda with the current war file
         5) Check the date of all war files
         6) List available config files
+        7) Check process status
         q) Quit
     ??? (Note that other options are available from the command line.)
 EOM
@@ -109,6 +129,9 @@ EOM
             option="lswars"
             ;;
         6)  option="listConfigs"
+            ;;
+        7)
+            option="status"
             ;;
         q|Q)
             option="quit"
@@ -167,12 +190,15 @@ case $option in
     listConfigs)
         listConfigs
         ;;
+    status)
+        status
+        ;;
     quit)
         echo "Goodbye."
         exit 0
         ;;
     *)
-        echo "$0 [ debug | -x ] start | stop | (kick | restart) | newwar | warcopy | (lswar | curwar) | latestwar | lsthewar"
+        echo "$0 [ debug | -x ] start | stop | status | (kick | restart) | newwar | warcopy | (lswar | curwar) | latestwar | lsthewar"
         ;;
 esac
 echo
