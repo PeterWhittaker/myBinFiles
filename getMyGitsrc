@@ -1,0 +1,33 @@
+jmps () {
+    myActsPath="${HOME}/.myGitsActive"
+
+    [[ ! -f ${myActsPath} ]] && { echo "Cannot proceed, no '${myActsPath}'."; return $(false); }
+
+    mapfile -t myActs < "${myActsPath}" || { echo "Could not create array, check bash version.";  return $(false); }
+
+    for (( counter = 0; counter < ${#myActs[@]}; counter++ )); do
+        echo "    $counter        ${myActs[$counter]}"
+    done
+    read -p "Enter a number to pick that file, or anything else to skip: " answer
+    echo
+
+    # this is the easiest way to do this, and the most POSIX compliant
+    case $answer in
+        *[!0-9]* | '')
+            echo "No such repo. Goodbye."
+            return $(false)
+            ;;
+    esac
+    targetFile=${HOME}/${myActs[$answer]}
+    # handle out of range cases
+    [[ -z ${targetFile} ]] && { echo "No such repo '${targetFile}'."; return $(false); }
+
+    tgtDir=$(dirname ${targetFile})
+
+    curDir=$(pwd)
+    cd "${tgtDir}"; wanted=$(pwd)
+    [[ $curDir == $wanted ]] && { echo "Already there!!!"; dirs; return $(true); }
+    cd "${curDir}"
+
+    pushd "${tgtDir}" || { echo "Could not jump to '${tgtDir}'."; return $(false); }
+}

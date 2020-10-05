@@ -6,6 +6,7 @@ addThis () {
 
 addThis dirtree
 addThis getBrew
+addThis getMyGits
 
 type brew &> /dev/null && addThis update
 

@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+
+[[ ! -z ${1} ]] && set -x
+
+set -u
+
+myGits=".myGits"
+myIgns=".myGits2ignore"
+myActs=".myGitsActive"
+
+cd ~ || { echo "Could not 'cd ~'!!! Exiting."}; exit 1; }
+myTopDir=$(pwd)
+cd "$myTopDir" || { echo "Could not 'cd ${myTopDir}'!!! Exiting."}; exit 1; }
+
+myGitsPath="${myTopDir}/${myGits}"
+myIgnsPath="${myTopDir}/${myIgns}"
+myActsPath="${myTopDir}/${myActs}"
+
+find . -name \*.git > "${myGitsPath}" 2> /dev/null
+msgPrefix=""
+[[ -f ${myIgnsPath} ]] && msgPrefix="
+
+Latest listing
+==============
+
+"
+echo "$msgPrefix" >> "${myIgnsPath}"
+
+cat "${myGitsPath}" >> "${myIgnsPath}"
+
+vim "${myIgnsPath}"
+
+grep -v -f "${myIgnsPath}" "${myGitsPath}" > "${myActsPath}"
+
+cat "${myActsPath}"
