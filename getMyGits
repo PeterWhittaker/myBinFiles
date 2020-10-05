@@ -30,6 +30,6 @@ cat "${myGitsPath}" >> "${myIgnsPath}"
 
 vim "${myIgnsPath}"
 
-grep -v -f "${myIgnsPath}" "${myGitsPath}" > "${myActsPath}"
+grep -v -F -f "${myIgnsPath}" "${myGitsPath}" > "${myActsPath}"
 
 cat "${myActsPath}"
