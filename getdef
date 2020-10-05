@@ -11,7 +11,7 @@ if [[ ! -z ${2} ]]; then
     exit 1    
 fi
 
-pattern='define(`'
+pattern='\(define\|interface\|template\)(`'
 if [[ -z $1 ]]; then
     find . -type f -exec grep -i -H "${pattern}" {} \; | cut -d: -f1 |sort -u
 else
