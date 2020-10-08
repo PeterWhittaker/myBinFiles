@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+
+targetFile=$1
+
+[[ ! -f $targetFile ]] && { echo "No target or target '$targetFile' does not exist. Exiting."; exit 2; }
+
+targets=$(grep define $targetFile |grep -v -e release -e version -e clang | cut -d' ' -f2)
+
+for target in $targets; do
+    message="Checking $targetFile for $target"
+    padding=""
+    for ((counter=1; counter <= ${#message}; counter++ )); do
+        padding+='='
+    done
+    echo $message
+    echo $padding
+    echo
+    grep $target $targetFile|less -p${target}
+    read -p 'Hit enter to continue: ' answer
+done
