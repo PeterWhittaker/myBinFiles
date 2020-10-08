@@ -7,10 +7,11 @@ addThis () {
 addThis dirtree
 addThis getBrew
 addThis getMyGits
+addThis getRPMDefs
 
 type brew &> /dev/null && addThis update
 
-[[ -d /etc/selinux ]] && addThis getdef
+[[ -d /etc/selinux ]] && addThis getSELinuxDefs
 
 [[ -d ~/ldap ]] && addThis ldap
 [[ -d ~/docker ]] && addThis myDocker
