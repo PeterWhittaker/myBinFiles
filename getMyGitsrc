@@ -22,7 +22,7 @@ jmps () {
     # handle out of range cases
     [[ -z ${targetFile} ]] && { echo "No such repo '${targetFile}'."; return $(false); }
 
-    tgtDir=$(dirname ${targetFile})
+    tgtDir=$(dirname "${targetFile}")
 
     curDir=$(pwd)
     cd "${tgtDir}"; wanted=$(pwd)
