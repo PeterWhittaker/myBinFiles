@@ -25,7 +25,8 @@ jmps () {
     tgtDir=$(dirname "${targetFile}")
 
     curDir=$(pwd)
-    cd "${tgtDir}"; wanted=$(pwd)
+    cd "${tgtDir}" 2> /dev/null|| { echo "No such folder '${tgtDir}', consider rerunning 'getMyGits'.";  return $(false); }
+    wanted=$(pwd)
     [[ $curDir == $wanted ]] && { echo "Already there!!!"; dirs; return $(true); }
     cd "${curDir}"
 
