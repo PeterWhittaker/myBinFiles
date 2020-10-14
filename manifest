@@ -4,6 +4,7 @@ addThis () {
     fileManifest+=" $1"
 }
 
+addThis brcmp
 addThis dirtree
 addThis getBrew
 addThis getMyGits

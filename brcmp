@@ -1,0 +1,136 @@
+#!/usr/bin/env bash
+
+myTarget=$1
+myCommand=$(basename $0)
+
+set -u
+
+usage () {
+    cat << EOM
+
+    $myCommand blackOrRedFile
+
+    blackOrRedFile is a TE, FC, or IF file; $myCommand will look in ..
+    relative to the file for either a file of the same name or with
+    black->red/red->black, then diff them, ignoring differences specific
+    to black or red (with some limitations).
+EOM
+    exit 1
+}
+
+[[ -z $myTarget ]] && usage
+
+getOtherFile () {
+    set +u
+    [[ -z $1 || ! -z $2 ]] && { echo $0 needs a single argument, exiting; exit 1; }
+    set -u
+
+    inFile=$1
+    case $inFile in
+        *red*)
+            outFile=$(echo $inFile | sed -e 's/red/black/g')
+            ;;
+        *black*)
+            outFile=$(echo $inFile | sed -e 's/black/red/g')
+            ;;
+        *)
+            outFile=$inFile
+            ;;
+    esac
+
+    echo "${outFile}"
+}
+
+getOtherDir () {
+    set +u
+    [[ -z $1 || ! -z $2 ]] && { echo $0 needs a single argument, exiting; exit 1; }
+    set -u
+    
+    inPath=$1
+    curDir=$(pwd)
+    cd "${curDir}"
+    cd ..
+    case $curDir in
+        *red*)
+            cd black || { echo No black, relative to $inPath, exiting; exit 1; }
+            ;;
+        *black*)
+            cd red || { echo No red, relative to $inPath, exiting; exit 1; }
+            ;;
+        *)
+            echo Neither red nor black relative to $inPath, exiting; exit 1;
+            ;;
+    esac
+
+    outDir=$(pwd)
+    cd "${curDir}"
+
+    echo "${outDir}"
+
+}
+
+getTargetDir () {
+    set +u
+    [[ -z $1 || ! -z $2 ]] && { echo $0 needs a single argument, exiting; exit 1; }
+    set -u
+    
+    inPath=$1
+
+    curDir=$(pwd)
+    cd "${inPath}" || { echo Could not cd to $inPath, very strange, exiting; exit 1; }
+    outDir=$(pwd)
+    cd "${curDir}"
+
+    echo "${outDir}"
+}
+
+#myTargetPath=$(dirname "${myTarget}")
+myTargetPath=$(getTargetDir $(dirname "${myTarget}"))
+myTargetName=$(basename "${myTarget}")
+myTargetFile="${myTargetPath}/${myTargetName}"
+
+otherPath=$(getOtherDir "${myTargetPath}")
+otherName=$(getOtherFile "${myTargetName}")
+otherFile="${otherPath}/${otherName}"
+
+[[ ! -f $myTarget ]] && { echo Argument $myTarget does not exist, exiting; exit 1; }
+[[ ! -f $otherFile ]] && { echo "'Other' file $otherFile does not exist, exiting"; exit 1; }
+
+echoWithPadding () {
+    message="${1}"
+    padLine=''
+    for (( i = 0; i < ${#message}; i++ )); do
+        padLine+='='
+    done
+    echo
+    echo $message
+    echo $padLine
+}
+
+removeTrivialDiffs () {
+    set +u
+    [[ -z $1 || ! -z $2 ]] && { echo $0 needs a single argument, exiting; exit 1; }
+    set -u
+
+    mangleThis="${1}"
+
+    case $mangleThis in
+        *red*black*|*black*red*)
+            echo This makes no sense: $mangleThis
+            exit 1
+            ;;
+        *red*)
+            sed -e 's/red/THE_SIDE/g' $mangleThis
+            ;;
+        *black*)
+            sed -e 's/black/THE_SIDE/g' $mangleThis
+            ;;
+    esac
+
+}
+
+{
+    echoWithPadding "Comparing '${myTargetName}' with '${otherFile}'"
+
+    diff --color=always -c -w -B <(removeTrivialDiffs "${myTargetFile}") <(removeTrivialDiffs "${otherFile}")
+} | /usr/bin/less
