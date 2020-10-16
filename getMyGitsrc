@@ -44,4 +44,10 @@ jmps () {
     cd "${curDir}"
 
     pushd "${tgtDir}" || { echo "Could not jump to '${tgtDir}'."; return $(false); }
+    export jmpTopDir="${tgtDir}"
+}
+
+pop () {
+    [[ ! -z $jmpTopDir ]] && cd "${jmpTopDir}" 2> /dev/null || echo "No topdir or cannot get there from here"
+    dirs
 }
