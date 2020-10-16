@@ -1,5 +1,15 @@
 #!/usr/bin/env bash
 
+if [[ $1 == "-nc" ]]; then
+    noComments () {
+        return $(true)
+    }
+    shift
+else
+    noComments () {
+        return $(false)
+    }
+fi
 myTarget=$1
 otherName=$2
 myCommand=$(basename $0)
@@ -127,10 +137,18 @@ removeTrivialDiffs () {
             exit 1
             ;;
         *red*)
-            sed -e 's/red/THE_SIDE/g' $mangleThis
+            if noComments; then
+                grep -v '^[[:space:]]*#' $mangleThis | sed -e '/^[[:space:]]*#/!s/[rR][eE][dD]/THE_SIDE/g'
+            else
+                sed -e '/^[[:space:]]*#/!s/[rR][eE][dD]/THE_SIDE/g' $mangleThis
+            fi
             ;;
         *black*)
-            sed -e 's/black/THE_SIDE/g' $mangleThis
+            if noComments; then
+                grep -v '^[[:space:]]*#' $mangleThis | sed -e '/^[[:space:]]*#/!s/[bB][lL][aA][cC][kK]/THE_SIDE/g'
+            else
+                sed -e '/^[[:space:]]*#/!s/[bB][lL][aA][cC][kK]/THE_SIDE/g' $mangleThis
+            fi
             ;;
     esac
 
