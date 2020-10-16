@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 myTarget=$1
+otherName=$2
 myCommand=$(basename $0)
 
 set -u
@@ -8,12 +9,15 @@ set -u
 usage () {
     cat << EOM
 
-    $myCommand blackOrRedFile
+    $myCommand blackOrRedFile [redOrBlackFile]
 
-    blackOrRedFile is a TE, FC, or IF file; $myCommand will look in ..
-    relative to the file for either a file of the same name or with
-    black->red/red->black, then diff them, ignoring differences specific
-    to black or red (with some limitations).
+    blackOrRedFile is (typically) a TE, FC, or IF file; $myCommand will
+    look in ..  relative to the file for either a file of the same name
+    or with black->red/red->black, then diff them, ignoring differences
+    specific to black or red (with some limitations).
+
+    If provided two arguments, it assumes they are in the same folder
+    and compares them, using the same rules and limitation.
 EOM
     exit 1
 }
@@ -84,16 +88,19 @@ getTargetDir () {
     echo "${outDir}"
 }
 
-#myTargetPath=$(dirname "${myTarget}")
-myTargetPath=$(getTargetDir $(dirname "${myTarget}"))
 myTargetName=$(basename "${myTarget}")
+myTargetPath=$(getTargetDir $(dirname "${myTarget}"))
 myTargetFile="${myTargetPath}/${myTargetName}"
 
-otherPath=$(getOtherDir "${myTargetPath}")
-otherName=$(getOtherFile "${myTargetName}")
-otherFile="${otherPath}/${otherName}"
+if [[ -z $otherName ]]; then
+    otherPath=$(getOtherDir "${myTargetPath}")
+    otherName=$(getOtherFile "${myTargetName}")
+    otherFile="${otherPath}/${otherName}"
+else
+    otherFile="${myTargetPath}/${otherName}"
+fi
 
-[[ ! -f $myTarget ]] && { echo Argument $myTarget does not exist, exiting; exit 1; }
+[[ ! -f $myTargetFile ]] && { echo Argument $myTarget does not exist, exiting; exit 1; }
 [[ ! -f $otherFile ]] && { echo "'Other' file $otherFile does not exist, exiting"; exit 1; }
 
 echoWithPadding () {
