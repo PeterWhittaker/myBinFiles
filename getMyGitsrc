@@ -5,8 +5,21 @@ jmps () {
 
     mapfile -t myActs < "${myActsPath}" || { echo "Could not create array, check bash version.";  return $(false); }
 
+    checkFolder () {
+        cntr=$1
+        repo=$2
+        full=$HOME/$repo
+        if [[ -d $full ]]; then
+            echo -e "\t$counter\t${repo}"
+        else
+            echo -e "No such repo\t${repo}\tRun 'getMyGits' again?"
+        fi
+    }
+
     for (( counter = 0; counter < ${#myActs[@]}; counter++ )); do
-        echo "    $counter        ${myActs[$counter]}"
+        thisFolder="${myActs[$counter]}"
+        message=$(checkFolder $counter "${thisFolder}")
+        echo "${message}"
     done
     read -p "Enter a number to pick that file, or anything else to skip: " answer
     echo
