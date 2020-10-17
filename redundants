@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+
+[[ $1 == "-x" ]] && { set -x; shift; }
+
+resetFlag=$1
+
+set -u
+
+patterns=allTypeDefinitions
+typesDone=typesComplete
+
+[[ ! -s $patterns ]] && resetFlag="reset"
+# we have to use this instead of touch because of some grep -v -f oddities....
+[[ ! -s $typesDone ]] && echo '#' > $typesDone
+
+curDir=$(pwd)
+case $curDir in
+    *black*red*|*red*black*)
+        echo $curDir makes no sense
+        ;;
+    *black*)
+        COLOUR=black
+        ;;
+    *red*)
+        COLOUR=red
+        ;;
+    *)
+        echo $curDir is neither black nor red, exiting
+        exit 1
+        ;;
+esac
+
+resetPatterns () {
+    grep "type *${COLOUR}.*_t" z-${COLOUR}-*te | cut -d: -f2 | sed -e 's/type//' -e 's/;//' -e 's/[[:space:]]//g' | sort -u | grep -v -f $typesDone > $patterns
+}
+[[ $resetFlag == "reset" ]] && resetPatterns
+
+allTEfiles=$(echo z*te)
+for pattern in $(grep -v '^#' ${patterns}); do
+    definedIn=$(grep -l "^type[[:space:]]*${pattern};" $allTEfiles)
+    if [[ -z $definedIn ]]; then
+        echo "There is no definition for $pattern"
+        otherTEfiles=$allTEfiles
+    else
+        echo -e "$pattern defined in:\t $definedIn"
+        otherTEfiles=$(echo $allTEfiles | sed -e "s,${definedIn},,")
+    fi
+    if grep -q $pattern $otherTEfiles; then
+        cat << EOM
+$pattern is used in
+$(grep -l $pattern $otherTEfiles)
+EOM
+    fi
+    if grep -q $pattern *fc; then
+        cat << EOM
+$pattern is used in
+$(grep -l $pattern *fc)
+EOM
+    fi
+    echo
+done

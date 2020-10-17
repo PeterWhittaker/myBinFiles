@@ -13,6 +13,8 @@ addThis getRPMDefs
 type brew &> /dev/null && addThis update
 
 [[ -d /etc/selinux ]] && addThis getSELinuxDefs
+# not conditional because MacOS pre-development
+addThis redundants
 
 [[ -d ~/ldap ]] && addThis ldap
 [[ -d ~/docker ]] && addThis myDocker
