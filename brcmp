@@ -138,14 +138,16 @@ removeTrivialDiffs () {
             ;;
         *red*)
             if noComments; then
-                grep -v '^[[:space:]]*#' $mangleThis | sed -e '/^[[:space:]]*#/!s/[rR][eE][dD]/THE_SIDE/g'
+                # grep -v '^[[:space:]]*#' $mangleThis | sed -e '/^[[:space:]]*#/!s/[rR][eE][dD]/THE_SIDE/g'
+                sed -e 's/^[[:space:]]*#.*//' -e '/^[[:space:]]*#/!s/[rR][eE][dD]/THE_SIDE/g' $mangleThis 
             else
                 sed -e '/^[[:space:]]*#/!s/[rR][eE][dD]/THE_SIDE/g' $mangleThis
             fi
             ;;
         *black*)
             if noComments; then
-                grep -v '^[[:space:]]*#' $mangleThis | sed -e '/^[[:space:]]*#/!s/[bB][lL][aA][cC][kK]/THE_SIDE/g'
+                # grep -v '^[[:space:]]*#' $mangleThis | sed -e '/^[[:space:]]*#/!s/[bB][lL][aA][cC][kK]/THE_SIDE/g'
+                sed -e 's/^[[:space:]]*#.*//' -e '/^[[:space:]]*#/!s/[bB][lL][aA][cC][kK]/THE_SIDE/g' $mangleThis 
             else
                 sed -e '/^[[:space:]]*#/!s/[bB][lL][aA][cC][kK]/THE_SIDE/g' $mangleThis
             fi
