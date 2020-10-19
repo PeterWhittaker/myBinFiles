@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
 
 [[ $1 == "-x" ]] && { set -x; shift; }
+resetFlag=""
+[[ $1 == "reset" ]] && { resetFlag=$1; shift; }
 
-resetFlag=$1
+# just set it, empty or full, works either way
+justThisType=$1
+thisTypeDone=$2
 
 set -u
 
 patterns=allTypeDefinitions
 typesDone=typesComplete
-
-[[ ! -s $patterns ]] && resetFlag="reset"
-# we have to use this instead of touch because of some grep -v -f oddities....
-[[ ! -s $typesDone ]] && echo '#' > $typesDone
 
 curDir=$(pwd)
 case $curDir in
@@ -30,13 +30,21 @@ case $curDir in
         ;;
 esac
 
+teFilePattern='z*te'
+allTEfiles=$(echo z*te)
+[[ $allTEfiles == $teFilePattern ]] && { echo No TE files in $curDir, exiting.; exit 1; }
+
+[[ ! -s $patterns ]] && resetFlag="reset"
+# we have to use this instead of touch because of some grep -v -f oddities....
+[[ ! -s $typesDone ]] && echo '#' > $typesDone
+
 resetPatterns () {
     grep "type *${COLOUR}.*_t" z-${COLOUR}-*te | cut -d: -f2 | sed -e 's/type//' -e 's/;//' -e 's/[[:space:]]//g' | sort -u | grep -v -f $typesDone > $patterns
 }
 [[ $resetFlag == "reset" ]] && resetPatterns
 
-allTEfiles=$(echo z*te)
-for pattern in $(grep -v '^#' ${patterns}); do
+findThisPattern () {
+    pattern=$1
     definedIn=$(grep -l "^type[[:space:]]*${pattern};" $allTEfiles)
     if [[ -z $definedIn ]]; then
         echo "There is no definition for $pattern"
@@ -58,4 +66,16 @@ $(grep -l $pattern *fc)
 EOM
     fi
     echo
-done
+}
+
+if [[ -z $justThisType ]]; then
+    for pattern in $(grep -v '^#' ${patterns}); do
+        findThisPattern $pattern
+    done
+else
+    findThisPattern $justThisType
+    if [[ $thisTypeDone == "done" ]]; then
+        echo $justThisType >> $typesDone
+        $0 reset
+    fi
+fi
