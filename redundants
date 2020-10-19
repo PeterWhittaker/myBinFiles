@@ -32,7 +32,8 @@ esac
 
 teFilePattern='z*te'
 allTEfiles=$(echo z*te)
-[[ $allTEfiles == $teFilePattern ]] && { echo No TE files in $curDir, exiting.; exit 1; }
+# doublequote the pattern to preserve it from globbing in the comparison
+[[ $allTEfiles == "$teFilePattern" ]] && { echo No TE files in $curDir, exiting.; exit 1; }
 
 [[ ! -s $patterns ]] && resetFlag="reset"
 # we have to use this instead of touch because of some grep -v -f oddities....
