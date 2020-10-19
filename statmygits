@@ -1,0 +1,78 @@
+#!/usr/bin/env bash
+
+myDir=$(pwd)
+cd $myDir || { echo "Cannot get to my ${myDir}, exiting."; exit 3; }
+
+workingIn=$(basename $myDir)
+case $workingIn in
+    myBinFiles)
+        compareWith=~/bin
+        ;;
+    myDotFiles)
+        compareWith=~
+        ;;
+    *)
+        echo "Is '$myDir' the right place to be?"
+        exit 1
+        ;;
+esac
+
+theManifest=${myDir}/manifest
+[[ ! -s ${theManifest} ]] && { echo "No manifest, very odd, exiting."; exit 5; }
+
+# this sets fileManifest
+source "${theManifest}" || { echo "Cannot source '${theManifest}', exiting."; exit 7; }
+
+# everything should be good to go now; get defensive
+set -u
+
+diffColorOption () {
+    if diff --color=always . . 2> /dev/null; then
+        echo "--color=always"
+    else
+        echo ""
+    fi
+}
+replaceOrSwap () {
+    anyDiffs=yes
+    diff $(diffColorOption) -u ${compareWith}/${file} ${myDir}/${file}
+    echo; echo "If + is wanted, 'y'; if - is wanted, 'swap'; 'd' deletes '-'; otherwise, anything else."
+    read -p "Replace $file in ~? " answer
+    case $answer in
+        y*|Y*)
+            cp -p ${myDir}/${file} ${compareWith}/${file} || echo Error copying!!!
+            ;;
+        swap)
+            cp -p ${compareWith}/${file} ${myDir}/${file} || echo Error copying!!!
+            ;;
+        d)
+            rm ${myHome}/${file}
+            ;;
+        *)
+            :
+            ;;
+    esac
+}
+
+addMissing () {
+    anyDiffs=yes
+    echo "The file '${compareWith}/${file}' does not exist;"
+    read -p "createit from '${myDir}/${file}'? " answer
+    case $answer in
+        y*|Y*)
+            cp -p ${myDir}/${file} ${compareWith}/${file}
+            ;;
+        *)
+            :
+            ;;
+    esac
+}
+
+anyDiffs=no
+for file in $fileManifest; do
+    [[ ! -f ${compareWith}/${file} ]] && { addMissing; continue; }
+    diff -q ${compareWith}/${file} ${myDir}/${file} 2> /dev/null || { replaceOrSwap; continue; }
+done
+
+[[ ${anyDiffs} = no ]] && { echo "No diffs, no need to change anything."; git status; }
+
