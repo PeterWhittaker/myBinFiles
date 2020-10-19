@@ -57,5 +57,5 @@ for file in $fileManifest; do
     diff -q ${myHome}/${file} ${myDir}/${file} 2> /dev/null || { replaceOrSwap; continue; }
 done
 
-[[ ${anyDiffs} = no ]] && echo "No diffs, no need to change anything."
+[[ ${anyDiffs} = no ]] && { echo "No diffs, no need to change anything."; git status; }
 
