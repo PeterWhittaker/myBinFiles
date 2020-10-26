@@ -43,6 +43,7 @@ resetPatterns () {
     # old way
     # grep "type *${COLOUR}.*_t" z-${COLOUR}-*te | cut -d: -f2 | sed -e 's/type//' -e 's/;//' -e 's/[[:space:]]//g' | sort -u | grep -v -f $typesDone > $patterns
 
+    {
     awk '
         # set our block marker, not in a block yet
         BEGIN {
@@ -87,7 +88,10 @@ resetPatterns () {
         # nothing to do here, right?
         END {
         }
-    ' z-${COLOUR}-*te | sort -u | grep -v -f $typesDone > $patterns
+    ' z-${COLOUR}-*te
+    #' z-${COLOUR}-*te | sort -u | grep -v -f $typesDone > $patterns
+    cut -d: -f3 z-${COLOUR}-*fc
+    }| sort -u | grep -v -f $typesDone > $patterns
 
 }
 [[ $resetFlag == "reset" ]] && resetPatterns
