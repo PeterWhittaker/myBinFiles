@@ -40,13 +40,61 @@ allTEfiles=$(echo z*te)
 [[ ! -s $typesDone ]] && echo '#' > $typesDone
 
 resetPatterns () {
-    grep "type *${COLOUR}.*_t" z-${COLOUR}-*te | cut -d: -f2 | sed -e 's/type//' -e 's/;//' -e 's/[[:space:]]//g' | sort -u | grep -v -f $typesDone > $patterns
+    # old way
+    # grep "type *${COLOUR}.*_t" z-${COLOUR}-*te | cut -d: -f2 | sed -e 's/type//' -e 's/;//' -e 's/[[:space:]]//g' | sort -u | grep -v -f $typesDone > $patterns
+
+    awk '
+        # set our block marker, not in a block yet
+        BEGIN {
+            inBlock=0
+        }
+
+        # skip lines that begin with comments
+        /^[[:space:]]*#/ {
+            next
+        }
+        # determine if we are in a block; skip to the next line if so
+        /{[^}]*/ {
+            inBlock=1
+            next
+        }
+        # determine if we are exiting a block; skip to the next line if so
+        /[^{]*}/ {
+            inBlock=0
+            next
+        }
+        # look for likely lines
+        # likely attribute definitions
+        /^[[:space:]]*attribute[[:space:]]+/ {
+            # if we are not in a block, any line beginning with <whitespace>attribute
+            # should be an attribute definition
+            if (inBlock == 0 ) {
+                gsub(/;/, "", $2)
+                print $2
+            }
+            # if we are in a block, do nothing
+        }
+        # likely type definitions
+        /^[[:space:]]*type[[:space:]]+/ {
+            # if we are not in a block, any line beginning with <whitespace>type
+            # should be a type definition
+            if (inBlock == 0 ) {
+                gsub(/[,;]/, "", $2)
+                print $2
+            }
+            # if we are in a block, do nothing
+        }
+        # nothing to do here, right?
+        END {
+        }
+    ' z-${COLOUR}-*te | sort -u | grep -v -f $typesDone > $patterns
+
 }
 [[ $resetFlag == "reset" ]] && resetPatterns
 
 findThisPattern () {
     pattern=$1
-    definedIn=$(grep -l "^type[[:space:]]*${pattern};" $allTEfiles)
+    definedIn=$(grep -l -e "^attribute[[:space:]]*${pattern}[,; ]" -e "^type[[:space:]]*${pattern}[,; ]" $allTEfiles)
     if [[ -z $definedIn ]]; then
         echo "There is no definition for $pattern"
         otherTEfiles=$allTEfiles
