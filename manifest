@@ -11,6 +11,7 @@ addThis getBrew
 addThis getMyGits
 addThis getRPMDefs
 addThis scrubUGW
+addThis pushUGW
 
 type brew &> /dev/null && addThis update
 
