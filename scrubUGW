@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+
+knownHosts=~/.ssh/known_hosts
+currentHosts=${knownHosts}.current
+
+cp -fp $knownHosts $currentHosts
+
+diff $knownHosts $currentHosts > /dev/null || { echo Diff problem, not safe to proceed; exit 1; }
+
+sed -e '/192.168.2.10[24]/d' $currentHosts > $knownHosts
+
+diff $currentHosts $knownHosts 
+

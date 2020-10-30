@@ -10,6 +10,7 @@ addThis dirtree
 addThis getBrew
 addThis getMyGits
 addThis getRPMDefs
+addThis scrubUGW
 
 type brew &> /dev/null && addThis update
 
