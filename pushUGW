@@ -1,11 +1,12 @@
-#!/usr/bin/bash env
+#!/usr/bin/env bash 
 
-identifyFile=~/.ssh/forHocus
+set -x
+identityFile=$(echo ~/.ssh/forHocus)
 
 [[ ! -f $identityFile ]] && { echo No matching keys, exiting.; exit 1; }
 
 for UGW in 192.168.2.102 192.168.2.104; do
-    ssh-copy-id -i $identityFile hocus@${UGW}
-    read -p "Ready to try passwordless? " answer
+    ssh-copy-id -f -i $identityFile hocus@${UGW}
+    read -p "Ready to try passwordless? (ctrl-c quits) " answer
     ssh hocus@${UGW}
 done
