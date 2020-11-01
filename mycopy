@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+pattern=$(echo /mnt/hgfs/pww/Desktop/*maroon*.tar.gz)
+existing=$(ls $pattern 2> /dev/null)
+if [[ ! -z $existing ]]; then
+    read -p "Remove existing? " answer
+    case $answer in
+        y*|Y*)
+            rm -rf ${existing}
+            ;;
+    esac
+fi
+cp /mnt/nas/build/0.1.0/selinuxpww01/diode/latest/*maroon*[^s].tar.gz /mnt/hgfs/pww/Desktop/ || echo WTAF

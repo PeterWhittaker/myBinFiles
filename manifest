@@ -4,6 +4,7 @@ addThis () {
     fileManifest+=" $1"
 }
 
+addThis mycopy
 addThis statmygits
 addThis brcmp
 addThis dirtree
