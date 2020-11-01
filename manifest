@@ -5,6 +5,7 @@ addThis () {
 }
 
 addThis mycopy
+addThis myflash
 addThis statmygits
 addThis brcmp
 addThis dirtree

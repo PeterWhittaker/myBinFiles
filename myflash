@@ -1,0 +1,12 @@
+  #!/usr/bin/env bash
+  volumes=/Volumes/R77*
+  for volume in $volumes; do
+      if [[ -d "${volume}/maroon" ]]; then
+          cd "$volume"
+          tar xf ~/Desktop/*maroon-0.1.0-20201*tar.gz 
+          ls -alt
+          cd ..
+      else
+          echo "Skipping unmounted volume '${volume}'"
+      fi
+ done
