@@ -10,3 +10,5 @@ if [[ ! -z $existing ]]; then
     esac
 fi
 cp /mnt/nas/build/0.1.0/selinuxpww01/diode/latest/*maroon*[^s].tar.gz /mnt/hgfs/pww/Desktop/ || echo WTAF
+pattern=$(echo /mnt/hgfs/pww/Desktop/*maroon*.tar.gz)
+ls -l $pattern
