@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
-pattern=$(echo /mnt/hgfs/pww/Desktop/*maroon*.tar.gz)
+
+dest=/mnt/hgfs/pww/Desktop
+[[ ! -d $dest ]] && { echo fatal error, cannot find $dest; exit 1; }
+
+pattern=$(echo ${dest}/*maroon*.tar.gz)
 existing=$(ls $pattern 2> /dev/null)
 if [[ ! -z $existing ]]; then
     read -p "Remove existing? " answer
@@ -9,6 +13,13 @@ if [[ ! -z $existing ]]; then
             ;;
     esac
 fi
-cp /mnt/nas/build/0.1.0/selinuxpww01/diode/latest/*maroon*[^s].tar.gz /mnt/hgfs/pww/Desktop/ || echo WTAF
-pattern=$(echo /mnt/hgfs/pww/Desktop/*maroon*.tar.gz)
+# old way
+#cp /mnt/nas/build/1.0.0/selinuxpww01/diode/latest/*maroon*[^s].tar.gz /mnt/hgfs/pww/Desktop/ || echo WTAF
+# new method - recursively cd into the most recently changed item
+# until that fails - it will fail when that isn't a folder, and it
+# should always find the most recent folders and end up in latest
+cd /mnt/nas
+while cd $(ls -t | head -1) 2>/dev/null; do :; done
+cp *maroon*[^s].tar.gz ${dest} || echo WTAF
+pattern=$(echo ${dest}/*maroon*.tar.gz)
 ls -l $pattern
