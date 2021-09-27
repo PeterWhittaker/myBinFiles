@@ -1,0 +1,79 @@
+#!/usr/bin/env bash
+
+myHost=$(hostname)
+myKeyDB=~/myKeyDB
+myKeyDB=$(echo $myKeyDB)
+
+declare -A myKeys
+declare -A myHosts
+
+workingDir=~/.ssh/
+workingDir=$(echo $workingDir)
+
+cfgFile="${workingDir}/config"
+
+[[ ! -d $workingDir ]] && {
+    echo "Cannot locate .ssh folder '${workingDir}', exiting"
+    exit 1
+}
+
+cd $workingDir || {
+    echo "Cannot cd to .ssh folder '${workingDir}', exiting"
+    exit 3
+}
+
+# first, get basic data about all of our keys
+for pubKey in *pub; do
+    privKey=$(basename $pubKey .pub)
+    fullDetails=$(ssh-keygen -l -f $pubKey)
+    read bitLength fullFingerPrint myId algorithm <<<${fullDetails}
+    algorithm=$(echo $algorithm | tr -d '()')
+    IFS=: read hashType fingerPrint <<<${fullFingerPrint}
+    echo $fingerPrint $hashType $myId $algorithm $bitLength $privKey
+    myKeys[${fingerPrint}]="$hashType:$privKey:$myId:$algorithm:$bitLength"
+done
+
+echo
+
+for key in "${!myKeys[@]}"; do
+    echo ${myKeys[$key]}
+done
+
+# check out each config entry
+[[ ! -f $cfgFile ]] && {
+    echo There is no cfgFile on this host
+}
+
+hostLine='^Host[[:space:]]'
+idenLine='^IdentityFile'
+nameLine='^Hostname'
+userLine='^User'
+blankLine='^[[:space:]]*$'
+curHost=''
+curIden=''
+curName=''
+curUser=''
+while read -r LINE; do
+    [[ $LINE =~ $hostLine ]] && {
+        curHost=${LINE##* }
+    }
+    [[ $LINE =~ $idenLine ]] && {
+        curIden=$(basename ${LINE##* })
+    }
+    [[ $LINE =~ $userLine ]] && {
+        curUser=${LINE##* }
+    }
+    [[ $LINE =~ $nameLine ]] && {
+        curName=${LINE##* }
+    }
+    [[ $LINE =~ $blankLine ]] && {
+        echo "'$myHost:$curHost:$curIden:$curName:$curUser'"
+        myHosts[${myHost}:${curHost}]="$curIden:$curName:$curUser"
+    }
+done < $cfgFile
+
+for key in "${!myHosts[@]}"; do
+    hostFrom=${key%:*}
+    hostTo=${key#*:}
+    echo $hostFrom goes to $hostTo using ${myHosts[$key]}
+done
