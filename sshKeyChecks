@@ -45,6 +45,7 @@ done
     echo There is no cfgFile on this host
 }
 
+comment='^[[:space:]]#'
 hostLine='^Host[[:space:]]'
 idenLine='^IdentityFile'
 nameLine='^Hostname'
@@ -56,6 +57,10 @@ curName=''
 curUser=''
 while read -r LINE; do
     [[ $LINE =~ $hostLine ]] && {
+        [[ ! -z $curHost ]] && {
+            debug && echo "'$myHost:$curHost:$curIden:$curName:$curUser'"
+            myHosts[${myHost}:${curHost}]="$curIden:$curName:$curUser"
+        }
         curHost=${LINE##*[[:space:]]}
     }
     [[ $LINE =~ $idenLine ]] && {
@@ -67,11 +72,11 @@ while read -r LINE; do
     [[ $LINE =~ $nameLine ]] && {
         curName=${LINE##*[[:space:]]}
     }
-    [[ $LINE =~ $blankLine ]] && {
-        debug && echo "'$myHost:$curHost:$curIden:$curName:$curUser'"
-        myHosts[${myHost}:${curHost}]="$curIden:$curName:$curUser"
-    }
+    [[ $LINE =~ $blankLine || $LINE =~ $comment ]] && continue
 done < $cfgFile
+# get the last one
+debug && echo "'$myHost:$curHost:$curIden:$curName:$curUser'"
+myHosts[${myHost}:${curHost}]="$curIden:$curName:$curUser"
 
 for key in "${!myHosts[@]}"; do
     hostFrom=${key%:*}
