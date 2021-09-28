@@ -56,16 +56,16 @@ curName=''
 curUser=''
 while read -r LINE; do
     [[ $LINE =~ $hostLine ]] && {
-        curHost=${LINE##* }
+        curHost=${LINE##*[[:space:]]}
     }
     [[ $LINE =~ $idenLine ]] && {
-        curIden=$(basename ${LINE##* })
+        curIden=$(basename ${LINE##*[[:space:]]})
     }
     [[ $LINE =~ $userLine ]] && {
-        curUser=${LINE##* }
+        curUser=${LINE##*[[:space:]]}
     }
     [[ $LINE =~ $nameLine ]] && {
-        curName=${LINE##* }
+        curName=${LINE##*[[:space:]]}
     }
     [[ $LINE =~ $blankLine ]] && {
         debug && echo "'$myHost:$curHost:$curIden:$curName:$curUser'"
