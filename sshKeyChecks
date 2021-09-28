@@ -94,14 +94,16 @@ for key in "${!myHosts[@]}"; do
     keysToHosts[$thisKey]+="$hostTo "
 done
 
-for key in "${!keysToHosts[@]}"; do
-    keyDate=$(ls -l --time-style='+%Y-%m-%d' $key 2> /dev/null|tr -s ' '| cut -d' ' -f6)
-    [[ -z keyDate ]] && keyGenMsg="$key" || keyGenMsg="${key}, generated $keyDate,"
-    if [[ -z ${keysToHosts[$key]} ]]; then
+for key in "${!myKeys[@]}"; do
+    IFS=: read hashType keyFile theRest <<<${myKeys[$key]}
+    keyDate=$(ls -l --time-style='+%Y-%m-%d' $keyFile 2> /dev/null|tr -s ' '| cut -d' ' -f6)
+    [[ -z $keyDate ]] && keyDate=$(ls -l  $keyFile 2> /dev/null|tr -s ' '| cut -d' ' -f6-8)
+    [[ -z $keyDate ]] && keyGenMsg="$keyFile" || keyGenMsg="${keyFile}, generated $keyDate,"
+    if [[ -z ${keysToHosts[$keyFile]} ]]; then
         echo $keyGenMsg is NOT used
     else
         echo $keyGenMsg is used for
-        for host in ${keysToHosts[$key]}; do
+        for host in ${keysToHosts[$keyFile]}; do
             echo -e "\t\t$host"
         done
     fi
