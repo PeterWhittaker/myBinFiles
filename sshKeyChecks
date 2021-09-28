@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+[[ $1 == "-d" ]] && debug () { return 0; } || debug () { return 1; }
 
 myHost=$(hostname)
 myKeyDB=~/myKeyDB
@@ -29,13 +30,13 @@ for pubKey in *pub; do
     read bitLength fullFingerPrint myId algorithm <<<${fullDetails}
     algorithm=$(echo $algorithm | tr -d '()')
     IFS=: read hashType fingerPrint <<<${fullFingerPrint}
-    echo $fingerPrint $hashType $myId $algorithm $bitLength $privKey
+    debug && echo $fingerPrint $hashType $myId $algorithm $bitLength $privKey
     myKeys[${fingerPrint}]="$hashType:$privKey:$myId:$algorithm:$bitLength"
 done
 
 echo
 
-for key in "${!myKeys[@]}"; do
+debug && for key in "${!myKeys[@]}"; do
     echo ${myKeys[$key]}
 done
 
@@ -67,7 +68,7 @@ while read -r LINE; do
         curName=${LINE##* }
     }
     [[ $LINE =~ $blankLine ]] && {
-        echo "'$myHost:$curHost:$curIden:$curName:$curUser'"
+        debug && echo "'$myHost:$curHost:$curIden:$curName:$curUser'"
         myHosts[${myHost}:${curHost}]="$curIden:$curName:$curUser"
     }
 done < $cfgFile
@@ -76,4 +77,12 @@ for key in "${!myHosts[@]}"; do
     hostFrom=${key%:*}
     hostTo=${key#*:}
     echo $hostFrom goes to $hostTo using ${myHosts[$key]}
+    #continue
+    thisKey=${myHosts[$key]%%:*}
+    fullDetails=$(ssh-keygen -l -f $thisKey)
+    read bitLength fullFingerPrint myId algorithm <<<${fullDetails}
+    algorithm=$(echo $algorithm | tr -d '()')
+    IFS=: read hashType fingerPrint <<<${fullFingerPrint}
+    echo -e "\t\t\tFingerprint: $fingerPrint"
+    echo
 done
