@@ -95,10 +95,12 @@ for key in "${!myHosts[@]}"; do
 done
 
 for key in "${!keysToHosts[@]}"; do
+    keyDate=$(ls -l --time-style='+%Y-%m-%d' $key 2> /dev/null|tr -s ' '| cut -d' ' -f6)
+    [[ -z keyDate ]] && keyGenMsg="$key" || keyGenMsg="${key}, generated $keyDate,"
     if [[ -z ${keysToHosts[$key]} ]]; then
-        echo $key is NOT used
+        echo $keyGenMsg is NOT used
     else
-        echo $key is used for
+        echo $keyGenMsg is used for
         for host in ${keysToHosts[$key]}; do
             echo -e "\t\t$host"
         done
