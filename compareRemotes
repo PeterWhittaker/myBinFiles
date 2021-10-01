@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 #defPat=${1:-[0-9]}
 defPat=${1}
-pattern="remotes/origin/${defPat}"
+pattern="origin/${defPat}"
 headPattern="origin/HEAD"
+masterPattern="origin/master"
 
 currentBranch="$(git rev-parse --abbrev-ref HEAD 2> /dev/null)"
 [[ -z $currentBranch ]] && {
@@ -22,16 +23,23 @@ echo Current branch: $currentBranch
 echo
 echo Current remotes
 echo '------->'
-echo "$currentRemotes"
+while read remote; do
+    excluded=""
+    [[ $remote =~ $headPattern || $remote =~ $currentPattern || $remote =~ $masterPattern ]] && excluded="EXCLUDED: "
+    [[ ! $remote =~ $pattern ]] && excluded="EXCLUDED: "
+    echo $excluded $remote
+done <<<"${currentRemotes}"
 echo '<-------'
 echo
 
 declare -a candidates
 declare -A showMore
 while read remote; do
-    [[ $remote =~ $headPattern || $remote =~ $currentPattern ]] && continue
-    missing="$(git log --color --graph --pretty=format:'%Cred%h%Creset %>(32)%cD -%C(yellow)%d%Creset %<(35,trunc)%s %Cgreen(%cr) %C(bold blue)<%an>%Creset' ^${currentBranch} $remote|head -5)"
-    [[ -z $missing ]] && candidates+=("$remote") || showMore[$remote]="$missing"
+    [[ $remote =~ $headPattern || $remote =~ $currentPattern || $remote =~ $masterPattern ]] && continue
+    [[ $remote =~ $pattern ]] && {
+        missing="$(git log --color --graph --pretty=format:'%Cred%h%Creset %>(32)%cD -%C(yellow)%d%Creset %<(35,trunc)%s %Cgreen(%cr) %C(bold blue)<%an>%Creset' ^${currentBranch} $remote|head -5)"
+        [[ -z $missing ]] && candidates+=("$remote") || showMore[$remote]="$missing"
+    }
 done <<<"${currentRemotes}"
 
 echo Candidates for deletion
