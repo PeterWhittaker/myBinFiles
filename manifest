@@ -15,6 +15,7 @@ addThis getRPMDefs
 addThis scrubUGW
 addThis pushUGW
 addThis sshKeyChecks
+addThis compareRemotes
 
 type brew &> /dev/null && addThis update
 

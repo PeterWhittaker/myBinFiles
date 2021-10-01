@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+#defPat=${1:-[0-9]}
+defPat=${1}
+pattern="remotes/origin/${defPat}"
+headPattern="origin/HEAD"
+
+currentBranch="$(git rev-parse --abbrev-ref HEAD 2> /dev/null)"
+[[ -z $currentBranch ]] && {
+    echo Not a git repo
+    exit 1
+}
+
+currentRemotes="$(git branch -r 2> /dev/null)"
+[[ -z $currentRemotes ]] && {
+    echo There are no current remotes
+    exit 1
+}
+
+echo
+echo Current branch: $currentBranch
+echo
+echo Current remotes
+echo '------->'
+echo "$currentRemotes"
+echo '<-------'
+echo
+
+declare -a candidates
+declare -A showMore
+while read remote; do
+    [[ $remote =~ $headPattern ]] && continue
+    missing="$(git log --color --graph --pretty=format:'%Cred%h%Creset %>(32)%cD -%C(yellow)%d%Creset %<(35,trunc)%s %Cgreen(%cr) %C(bold blue)<%an>%Creset' ^${currentBranch} $remote|head -5)"
+    [[ -z $missing ]] && candidates+=("$remote") || showMore[$remote]="$missing"
+done <<<"${currentRemotes}"
+
+echo
+echo Candidates for deletion
+[[ ${#candidates[@]} -gt 0 ]] && {
+    echo '------->'
+    for candidate in ${candidates[@]}; do
+        echo "$candidate"
+    done
+    echo '<-------'
+} || {
+    echo '<none>'
+}
+echo
+
+echo Summary of commits not merged into $currentBranch
+[[ ${#showMore[@]} -gt 0 ]] && {
+    echo '------->'
+    for more in ${!showMore[@]}; do
+        echo $more
+        echo "${showMore[$more]}"
+        echo
+    done
+    echo '<-------'
+} || {
+    echo '<none>'
+}
+
+cat << EOM
+
+To limit what branches are considered, call $0 with a pattern, e.g.,
+
+    $0 '[0-9]'
+    $0 '[^rRp]'
+    etc.
+EOM
