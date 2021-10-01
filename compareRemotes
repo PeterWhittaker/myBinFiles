@@ -9,6 +9,7 @@ currentBranch="$(git rev-parse --abbrev-ref HEAD 2> /dev/null)"
     echo Not a git repo
     exit 1
 }
+currentPattern="origin/${currentBranch}"
 
 currentRemotes="$(git branch -r 2> /dev/null)"
 [[ -z $currentRemotes ]] && {
@@ -28,12 +29,11 @@ echo
 declare -a candidates
 declare -A showMore
 while read remote; do
-    [[ $remote =~ $headPattern ]] && continue
+    [[ $remote =~ $headPattern || $remote =~ $currentPattern ]] && continue
     missing="$(git log --color --graph --pretty=format:'%Cred%h%Creset %>(32)%cD -%C(yellow)%d%Creset %<(35,trunc)%s %Cgreen(%cr) %C(bold blue)<%an>%Creset' ^${currentBranch} $remote|head -5)"
     [[ -z $missing ]] && candidates+=("$remote") || showMore[$remote]="$missing"
 done <<<"${currentRemotes}"
 
-echo
 echo Candidates for deletion
 [[ ${#candidates[@]} -gt 0 ]] && {
     echo '------->'
