@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+
+myExit ()
+{
+    [[ -n $1 ]] && { status=$1; shift; } || status=1
+    message="$*"
+    [[ -n $message ]] && echo $message
+    case $status in
+        [0-9][0-9]*)
+            exit $status
+            ;;
+        *)
+            exit 101
+            ;;
+    esac
+}
+
+# Only do this on the Mac mini; this is a good enough check for now
+isMacOS || myExit 1
+
+keyList=~/.ssh/keysToAdd
+[[ ! -r $keyList ]] && myExit 3
+
+keyFiles=$(cat $keyList)
+for key in $keyFiles; do
+    keyFile=~/.ssh/$key
+    [[ -r $keyFile ]] && ssh-add -K $keyFile
+done

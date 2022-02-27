@@ -17,6 +17,8 @@ addThis pushUGW
 addThis sshKeyChecks
 addThis compareRemotes
 
+isMacOS && addThis addMyKeys
+
 type brew &> /dev/null && addThis update
 
 [[ -d /etc/selinux ]] && addThis getSELinuxDefs
