@@ -21,8 +21,13 @@ isMacOS || myExit 1
 keyList=~/.ssh/keysToAdd
 [[ ! -r $keyList ]] && myExit 3
 
+# Read the list of key files into a variable (could just as easily put the
+# cat command in the for...; construct). DO NOT read the file a line at a 
+# time in the while loop, because this THROWS OFF ssh-add and makes it try
+# to use ssh-askpass
 keyFiles=$(cat $keyList)
 for key in $keyFiles; do
     keyFile=~/.ssh/$key
     [[ -r $keyFile ]] && ssh-add -K $keyFile
 done
+
