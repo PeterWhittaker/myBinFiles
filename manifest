@@ -19,6 +19,8 @@ addThis compareRemotes
 
 isMacOS && addThis addMyKeys
 
+isLinux && addThis selTest
+
 type brew &> /dev/null && addThis update
 
 [[ -d /etc/selinux ]] && addThis getSELinuxDefs

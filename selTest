@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+
+deleteIfEmpty () {
+    while [[ $1 ]]; do
+        [[ -f $1 && ! -s $1 ]] && { echo deleting $1; rm -f $1; }
+        shift
+    done
+}
+
+timestamp=$(date +%H:%M)
+raw=${timestamp}_${0}_raw
+rules=${timestamp}_${0}_rules
+[[ -z $1 ]] && read -p 'Press enter to run ausearch|audit2allow: ' throwAwayAnswer
+sudo ausearch -m avc -m user_avc -ts ${timestamp} | tee $raw | audit2allow | tee $rules
+deleteIfEmpty $raw $rules
