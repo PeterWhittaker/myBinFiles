@@ -7,9 +7,10 @@ deleteIfEmpty () {
     done
 }
 
-timestamp=$(date +%H:%M)
-raw=${timestamp}_${0}_raw
-rules=${timestamp}_${0}_rules
+prefix=$(basename ${BASH_SOURCE})
+[[ -z $1 ]] && timestamp=$(date +%H:%M) || timestamp="$1"
+raw=${timestamp}_${prefix}_raw
+rules=${timestamp}_${prefix}_rules
 [[ -z $1 ]] && read -p 'Press enter to run ausearch|audit2allow: ' throwAwayAnswer
 sudo ausearch -m avc -m user_avc -ts ${timestamp} | tee $raw | audit2allow | tee $rules
 deleteIfEmpty $raw $rules
