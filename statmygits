@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+VIMPLUGS="vimplugs"
+VIMPACKS="vimpacks"
+
 myDir=$(pwd)
 cd $myDir || { echo "Cannot get to my ${myDir}, exiting."; exit 3; }
 
@@ -13,6 +16,7 @@ while [[ $1 ]]; do
     esac
 done
 
+doVim=""
 workingIn=$(basename $myDir)
 case $workingIn in
     myBinFiles)
@@ -23,6 +27,7 @@ case $workingIn in
         ;;
     myDotFiles)
         compareWith=~
+        doVim="yes"
         ;;
     *)
         echo "Is '$myDir' the right place to be?"
@@ -104,3 +109,11 @@ done
 
 [[ ${anyDiffs} = no ]] && { echo "No diffs, no need to change anything."; git status; } || true
 
+if [[ $doVim ]]; then
+    if type ${VIMPLUGS} &> /dev/null; then
+        ${VIMPLUGS} ${VIMPACKS}
+    else
+        printf >&2 "Update bin files first, please"
+        exit 1
+    fi
+fi
