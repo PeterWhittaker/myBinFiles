@@ -6,7 +6,7 @@ set -u
 PACK_ROOT=~/.vim/pack
 listP () {
     local depth=${1:-1}
-    find "${PACK_ROOT}" -depth $depth -type d -print
+    find "${PACK_ROOT}" -mindepth $depth -maxdepth $depth -type d -print
 }
 listPackages () { local place; while read -r place; do printf "%40s\n" "${place#*/pack/}"; done <<<$(listP 3); }
 listPlaces () { local place; while read -r place; do echo ${place##*/}; done <<<$(listP 1) | sort -u; }
