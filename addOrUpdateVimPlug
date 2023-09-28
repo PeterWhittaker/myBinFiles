@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+
+# consider integrating https://abletech.nz/resource/get-rid-of-your-vim-plugin-manager/
+
+set -u
+PACK_ROOT=~/.vim/pack
+listP () {
+    local depth=${1:-1}
+    find "${PACK_ROOT}" -depth $depth -type d -print
+}
+listPackages () { local place; while read -r place; do printf "%40s\n" "${place#*/pack/}"; done <<<$(listP 3); }
+listPlaces () { local place; while read -r place; do echo ${place##*/}; done <<<$(listP 1) | sort -u; }
+
+ondemand="yes"
+always=""
+package=""
+where="uncategorized"
+while getopts lLoap:w: opt; do case $opt in
+    l) listPackages; exit 0;;
+    L) listPlaces; exit 0;;
+    o) ondemand="yes"; always="";;
+    a) ondemand=""; always="yes";;
+    p) package="${OPTARG}";;
+    w) where="${OPTARG}";;
+    ?) : ;;
+    *) printf >&2 "Bogus option '%s', exiting\n" "${opt}"; exit 1;;
+esac; done
+shift $((OPTIND - 1))
+if [[ ! $package ]]; then
+    [[ $# -ne 1 ]] && { printf >&2 "Invalid arguments '%s', exiting\n" "$*" ; exit 1; }
+    package="${1}"
+fi
+[[ ! $package ]] && { printf >&2 "How did this happen? No package. Exiting\n"; exit 1; }
+[[ ! $where ]] && { printf >&2 "How did this happen? No directory. Exiting\n"; exit 1; }
+
+pathPart=""
+[[ $ondemand ]] && pathPart="opt"
+[[ $always ]] && pathPart="start"
+
+PACK_DIRECTORY="${PACK_ROOT}/${where}/${pathPart}"
+target=$(basename $package .git)
+
+gitCmdRoot="git -C ${PACK_DIRECTORY}"
+action=""
+preposition=""
+
+if [[ -d "${PACK_DIRECTORY}/${target}" ]]; then
+    gitCmd="${gitCmdRoot}/${target} pull --force"
+    action="update"
+    preposition=""
+else
+    mkdir -p "$PACK_DIRECTORY" || { printf >&2 "Unable to create '%s', exiting\n" "${PACK_DIRECTORY}"; exit 1; }
+    gitCmd="${gitCmdRoot} clone ${package}"
+    action="clone"
+    preposition="to"
+fi
+if ${gitCmd}; then
+    printf >&2 "Successfully %sd '%s' in%s '%s'\n" "${action}" "${package}" "${preposition}" "${PACK_DIRECTORY}"
+    rc=0
+else
+    printf >&2 "Could not %s '%s' in%s '%s'\n" "${action}" "${package}" "${preposition}" "${PACK_DIRECTORY}"
+    rc=1
+fi
+exit $rc

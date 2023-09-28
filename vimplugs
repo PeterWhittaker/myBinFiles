@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+
+manifest="${1}"
+[[ ! "${manifest}" || ! -f "${manifest}" || ! -s "${manifest}" ]] && { printf >&2 "Invalid manifest, exiting"; exit 1; }
+set -u
+while read -r package where always; do
+    [[ ! $package ]] && { printf >&2 "Missing package, trying the next one"; continue; }
+    [[ $where ]] && where="-w ${where}"
+    [[ $always ]] && aOrO="-a" || aOrO="-o"
+    addOrUpdateVimPlug ${where} "${aOrO}" $package
+done < "${manifest}"
+

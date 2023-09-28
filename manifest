@@ -16,6 +16,8 @@ addThis scrubUGW
 addThis pushUGW
 addThis sshKeyChecks
 addThis compareRemotes
+addThis addOrUpdateVimPlug
+addThis vimplugs
 
 isMacOS && addThis addMyKeys
 
