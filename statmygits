@@ -15,7 +15,7 @@ declare -a DO_THESE=()
 init=""
 while getopts i opt; do case $opt in
     i) init="yes";;
-    *) printf >&2 "Unknown option '%s', ignoring" "${opt}" ;;
+    *) printf >&2 "Unknown option '%s', ignoring\n" "${opt}" ;;
 esac; done
 shift $((OPTIND - 1))
 
@@ -54,7 +54,7 @@ diffColorOption () {
 
 replaceOrSwap () {
     anyDiffs=yes
-    diff $(diffColorOption) -u ${compareWith}/${file} ${myDir}/${file}
+    diff $(diffColorOption) -u ${compareWith}/${file} ${dir}/${file}
     echo; echo "If + is wanted, 'y'; if - is wanted, 'swap'; 'd' deletes '-'; otherwise, anything else."
     read -p "Replace $file in ~? " answer
     case $answer in
@@ -74,11 +74,11 @@ replaceOrSwap () {
 }
 
 replace () {
-    cp -p ${compareWith}/${file} ${myDir}/${file} || echo Error copying!!!
+    cp -p ${compareWith}/${file} ${dir}/${file} || printf >&2 "Error copying!!!\n"
 }
 
 makeOrUpdate () {
-    cp -p ${myDir}/${file} ${compareWith}/${file} || echo Error copying!!!
+    cp -p ${myDir}/${file} ${compareWith}/${file} || printf >&2 "Error copying!!!\n"
 }
 
 addMissing () {
@@ -116,26 +116,26 @@ for dir in "${DO_THESE[@]}"; do
             ;;
     esac
     theManifest="${dir}/${MANIFEST}"
-    [[ ! -f ${theManifest} || ! -s ${theManifest} ]] && { printf >&2 "No manifest, very odd, skipping '%s'." "${dir}"; continue; }
+    [[ ! -f ${theManifest} || ! -s ${theManifest} ]] && { printf >&2 "No manifest, very odd, skipping '%s'.\n" "${dir}"; continue; }
 
     (
         # this sets fileManifest
-        source "${theManifest}" || { printf >&2 "Cannot source '%s', exiting." "${theManifest}"; exit 7; }
+        source "${theManifest}" || { printf >&2 "Cannot source '%s', exiting.\n" "${theManifest}"; exit 7; }
 
         anyDiffs=no
         for file in $fileManifest; do
             [[ ! -f ${compareWith}/${file} ]] && { addMissing; continue; }
-            diff -q ${compareWith}/${file} ${myDir}/${file} 2> /dev/null || { replaceOrSwap; continue; }
+            diff -q ${compareWith}/${file} ${dir}/${file} 2> /dev/null || { replaceOrSwap; continue; }
         done
 
-        [[ ${anyDiffs} = no ]] && { echo "No diffs, no need to change anything."; git status; } || true
+        [[ ${anyDiffs} = no ]] && { printf >&2 "No diffs, no need to change anything.\n"; git -C $dir status; } || true
     )
 
     if [[ $DOVIM ]]; then
         if type ${VIMPLUGS} &> /dev/null; then
             ${VIMPLUGS} ${dir}/${VIMPACKS}
         else
-            printf >&2 "Update bin files first, please"
+            printf >&2 "Update bin files first, please\n"
             exit 1
         fi
     fi
