@@ -6,10 +6,11 @@ set -u
 VIMPLUGS="vimplugs"
 VIMPACKS="vimpacks"
 MANIFEST="manifest"
-BINFILES=~/bin
-DOTFILES=~
 DOVIM=""
-DO_THESE=()
+declare -A DO_DIRS
+DO_DIRS[myBinFiles]=~/bin
+DO_DIRS[myDotFiles]=~
+declare -a DO_THESE=()
 
 init=""
 while getopts i opt; do case $opt in
@@ -18,11 +19,30 @@ while getopts i opt; do case $opt in
 esac; done
 shift $((OPTIND - 1))
 
+# are we doing a specific directory, or all?
+# first, check our cwd to determine if specific
 myDir=$(pwd)
-for dir in "${BINFILES}" "${DOTFILES}"; do
-    [[ $myDir == "${dir}" ]] && DO_THESE+=("$dir")
+baseDir=$(basename "${myDir}")
+for dir in "${!DO_DIRS[@]}"; do
+    [[ $baseDir == "$dir" ]] && { DO_THESE+=("$myDir"); break; }
 done
-[[ ${#DO_THESE} -eq 0 ]] && DO_THESE=("${BINFILES}" "${DOTFILES}")
+
+if [[ ${#DO_THESE[@]} -eq 0 ]]; then
+    # we are doing all of them....
+    # first, make sure we can find one and only one of each one
+    for dir in "${!DO_DIRS[@]}"; do
+        possibleDir=$(find ~ -xdev -type d -name "${dir}" -print 2> /dev/null)
+        dirCount=$(echo "${possibleDir}" | wc -l)
+        if [[ $dirCount -ne 1 ]]; then
+            printf >&2 "For '%s', wanted one dir, got %s, skipping\n" "${dir}" "${dirCount}"
+            continue
+        fi
+        DO_THESE+=("$possibleDir")
+    done
+fi
+
+# DO_THESE is set to one or more directories to be processed;
+# carry on....
 
 diffColorOption () {
     if diff --color=always . . 2> /dev/null; then
@@ -81,41 +101,43 @@ addMissing () {
     [[ $doIt == "yes" ]] && makeOrUpdate
 }
 
-anyDiffs=no
-for file in $fileManifest; do
-    [[ ! -f ${compareWith}/${file} ]] && { addMissing; continue; }
-    diff -q ${compareWith}/${file} ${myDir}/${file} 2> /dev/null || { replaceOrSwap; continue; }
-done
-
-[[ ${anyDiffs} = no ]] && { echo "No diffs, no need to change anything."; git status; } || true
-
 for dir in "${DO_THESE[@]}"; do
-    case $dir in
+    baseDir=$(basename "${dir}")
+    compareWith=${DO_DIRS[$baseDir]}
+    case $baseDir in
         myBinFiles)
-            compareWith=~/bin
             if [[ ! -f $compareWith ]]; then
                 mkdir -p $compareWith
             fi
+            DOVIM=""
             ;;
         myDotFiles)
-            compareWith=~
             DOVIM="yes"
             ;;
     esac
-    theManifest=${myDir}/manifest
-    [[ ! -s ${theManifest} ]] && { echo "No manifest, very odd, exiting."; exit 5; }
+    theManifest="${dir}/${MANIFEST}"
+    [[ ! -f ${theManifest} || ! -s ${theManifest} ]] && { printf >&2 "No manifest, very odd, skipping '%s'." "${dir}"; continue; }
 
-# this sets fileManifest
-source "${theManifest}" || { echo "Cannot source '${theManifest}', exiting."; exit 7; }
+    (
+        # this sets fileManifest
+        source "${theManifest}" || { printf >&2 "Cannot source '%s', exiting." "${theManifest}"; exit 7; }
 
+        anyDiffs=no
+        for file in $fileManifest; do
+            [[ ! -f ${compareWith}/${file} ]] && { addMissing; continue; }
+            diff -q ${compareWith}/${file} ${myDir}/${file} 2> /dev/null || { replaceOrSwap; continue; }
+        done
+
+        [[ ${anyDiffs} = no ]] && { echo "No diffs, no need to change anything."; git status; } || true
+    )
+
+    if [[ $DOVIM ]]; then
+        if type ${VIMPLUGS} &> /dev/null; then
+            ${VIMPLUGS} ${dir}/${VIMPACKS}
+        else
+            printf >&2 "Update bin files first, please"
+            exit 1
+        fi
+    fi
 
 done
-
-if [[ $DOVIM ]]; then
-    if type ${VIMPLUGS} &> /dev/null; then
-        ${VIMPLUGS} ${VIMPACKS}
-    else
-        printf >&2 "Update bin files first, please"
-        exit 1
-    fi
-fi
