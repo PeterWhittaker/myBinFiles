@@ -1,48 +1,28 @@
 #!/usr/bin/env bash
 
-VIMPLUGS="vimplugs"
-VIMPACKS="vimpacks"
-
-myDir=$(pwd)
-cd $myDir || { echo "Cannot get to my ${myDir}, exiting."; exit 3; }
-
-init=""
-while [[ $1 ]]; do
-    case $1 in
-        init)
-            init="yes"
-            shift
-            ;;
-    esac
-done
-
-doVim=""
-workingIn=$(basename $myDir)
-case $workingIn in
-    myBinFiles)
-        compareWith=~/bin
-        if [[ ! -f $compareWith ]]; then
-            mkdir -p $compareWith
-        fi
-        ;;
-    myDotFiles)
-        compareWith=~
-        doVim="yes"
-        ;;
-    *)
-        echo "Is '$myDir' the right place to be?"
-        exit 1
-        ;;
-esac
-
-theManifest=${myDir}/manifest
-[[ ! -s ${theManifest} ]] && { echo "No manifest, very odd, exiting."; exit 5; }
-
-# this sets fileManifest
-source "${theManifest}" || { echo "Cannot source '${theManifest}', exiting."; exit 7; }
-
 # everything should be good to go now; get defensive
 set -u
+
+VIMPLUGS="vimplugs"
+VIMPACKS="vimpacks"
+MANIFEST="manifest"
+BINFILES=~/bin
+DOTFILES=~
+DOVIM=""
+DO_THESE=()
+
+init=""
+while getopts i opt; do case $opt in
+    i) init="yes";;
+    *) printf >&2 "Unknown option '%s', ignoring" "${opt}" ;;
+esac; done
+shift $((OPTIND - 1))
+
+myDir=$(pwd)
+for dir in "${BINFILES}" "${DOTFILES}"; do
+    [[ $myDir == "${dir}" ]] && DO_THESE+=("$dir")
+done
+[[ ${#DO_THESE} -eq 0 ]] && DO_THESE=("${BINFILES}" "${DOTFILES}")
 
 diffColorOption () {
     if diff --color=always . . 2> /dev/null; then
@@ -65,7 +45,7 @@ replaceOrSwap () {
             replace
             ;;
         d)
-            rm ${myHome}/${file}
+            rm ${compareWith}/${file}
             ;;
         *)
             :
@@ -84,7 +64,7 @@ makeOrUpdate () {
 addMissing () {
     doIt="no"
     anyDiffs=yes
-    if [[ "yes" == $init ]]; then
+    if [[ $init == "yes" ]]; then
         doIt="yes"
     else
         echo "The file '${compareWith}/${file}' does not exist;"
@@ -98,7 +78,7 @@ addMissing () {
                 ;;
         esac
     fi
-    [[ "yes" == $doIt ]] && makeOrUpdate
+    [[ $doIt == "yes" ]] && makeOrUpdate
 }
 
 anyDiffs=no
@@ -109,7 +89,29 @@ done
 
 [[ ${anyDiffs} = no ]] && { echo "No diffs, no need to change anything."; git status; } || true
 
-if [[ $doVim ]]; then
+for dir in "${DO_THESE[@]}"; do
+    case $dir in
+        myBinFiles)
+            compareWith=~/bin
+            if [[ ! -f $compareWith ]]; then
+                mkdir -p $compareWith
+            fi
+            ;;
+        myDotFiles)
+            compareWith=~
+            DOVIM="yes"
+            ;;
+    esac
+    theManifest=${myDir}/manifest
+    [[ ! -s ${theManifest} ]] && { echo "No manifest, very odd, exiting."; exit 5; }
+
+# this sets fileManifest
+source "${theManifest}" || { echo "Cannot source '${theManifest}', exiting."; exit 7; }
+
+
+done
+
+if [[ $DOVIM ]]; then
     if type ${VIMPLUGS} &> /dev/null; then
         ${VIMPLUGS} ${VIMPACKS}
     else
