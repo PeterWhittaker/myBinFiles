@@ -1,12 +1,81 @@
 #!/usr/bin/env bash
 
-manifest="${1}"
-[[ ! "${manifest}" || ! -f "${manifest}" || ! -s "${manifest}" ]] && { printf >&2 "Invalid manifest, exiting"; exit 1; }
 set -u
-while read -r package where always; do
-    [[ ! $package ]] && { printf >&2 "Missing package, trying the next one"; continue; }
+
+while getopts d opt; do case $opt in
+    d) doDebug="yes" ;;
+esac; done; shift $((OPTIND - 1))
+
+manifest="${1:-""}"
+
+# I should define this at the shell level
+debug () {
+    [[ ${doDebug:+IS_SET} && $# -gt 0 ]] && printf >&2 "%s\n" "${*}" || true
+}
+
+# these next two are cool, I am keeping them for posterity,
+# even if I am not using them anymore....
+resetVariableIfComment () {
+    [[ $# -ne 1 ]] && return
+    local -n variable=$1
+    fC="${variable:0:1}"
+    [[ $fC == '#' || $fC == '"' ]] && variable="" || true
+}
+resetVariablesIfComment () {
+    local -n var
+    for var in ${*}; do
+        echo "'${var}'"
+        [[ ${var:+IS_SET} ]] && resetVariableIfComment ${!var} || true
+    done
+}
+
+# I should define these at the shell level
+noOrEmptyFile () {
+    [[ ! "${1:+IS_SET}" || ! -f "${1}" || ! -s "${1}" ]]
+}
+exitIfNoOrEmptyFile () {
+    local label="file"
+    local opt; while getopts l: opt; do case $opt in
+        l) label="${OPTARG}" ;;
+    esac; done; shift $((OPTIND - 1))
+
+    noOrEmptyFile "${1:-""}" && { printf >&2 "Missing or empty %s, exiting" "${label}"; exit 1; }
+}
+
+processVimPlugin () {
+    local package="${1:-""}"
+    local where="${2:-""}"
+    local always="${3:-""}"
+    local aOrO
+    [[ ! $package ]] && { debug "Comment line or missing package, skipping"; true; return; }
     [[ $where ]] && where="-w ${where}"
-    [[ $always ]] && aOrO="-a" || aOrO="-o"
+    shopt -s nocasematch; case $always in
+        opt*|"") aOrO="-o" ;;
+        *)       aOrO="-a" ;;
+    esac
     addOrUpdateVimPlug ${where} "${aOrO}" $package
+}
+
+# this should probably be a generic function....
+stripCommentsFromLine () {
+    local -n stripCommentsFromLine=$1
+
+    # strip any comments from the line; comments can begin with #
+    # (shell style) or " (vi/vim style); it doesn't matter which
+    # one we start with, just strip either comment marker and
+    # everything that follows it, first from the original line...
+
+    stripCommentsFromLine="${stripCommentsFromLine%%#*}"
+
+    # ...then strip the other comment marker, etc., from the
+    # stripped line, to make sure we handle both cases
+
+    stripCommentsFromLine="${stripCommentsFromLine%%\"*}"
+}
+
+exitIfNoOrEmptyFile -l manifest "${manifest}"
+while read -r line; do
+    stripCommentsFromLine line
+    processVimPlugin ${line}
 done < "${manifest}"
 
