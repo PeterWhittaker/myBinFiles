@@ -80,7 +80,7 @@ replace () {
 }
 
 makeOrUpdate () {
-    cp -p ${myDir}/${file} ${compareWith}/${file} || printf >&2 "Error copying!!!\n"
+    cp -p ${dir}/${file} ${compareWith}/${file} || printf >&2 "Error copying!!!\n"
 }
 
 addMissing () {
@@ -90,7 +90,7 @@ addMissing () {
         doIt="yes"
     else
         echo "The file '${compareWith}/${file}' does not exist;"
-        read -p "createit from '${myDir}/${file}'? " answer
+        read -p "createit from '${dir}/${file}'? " answer
         case $answer in
             y*|Y*)
                 doIt="yes"
