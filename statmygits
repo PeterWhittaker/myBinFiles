@@ -7,14 +7,16 @@ VIMPLUGS="vimplugs"
 VIMPACKS="vimpacks"
 MANIFEST="manifest"
 DOVIM=""
+NODOVIM=""
 declare -A DO_DIRS
 DO_DIRS[myBinFiles]=~/bin
 DO_DIRS[myDotFiles]=~
 declare -a DO_THESE=()
 
 init=""
-while getopts i opt; do case $opt in
+while getopts iV opt; do case $opt in
     i) init="yes";;
+    V) NODOVIM="yesWhichMeansNo" ;;
     *) printf >&2 "Unknown option '%s', ignoring\n" "${opt}" ;;
 esac; done
 shift $((OPTIND - 1))
@@ -112,7 +114,7 @@ for dir in "${DO_THESE[@]}"; do
             DOVIM=""
             ;;
         myDotFiles)
-            DOVIM="yes"
+            [[ ! $NODOVIM ]] && DOVIM="yes"
             ;;
     esac
     theManifest="${dir}/${MANIFEST}"
