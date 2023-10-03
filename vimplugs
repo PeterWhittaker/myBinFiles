@@ -2,15 +2,22 @@
 
 set -u
 
-while getopts d opt; do case $opt in
-    d) doDebug="yes" ;;
+doUpdate="yes"
+doCount="yes"
+OPTIND=1
+while getopts dC opt; do case $opt in
+    d) doDebug="yes"    ;;
+    C) doUpdate=""      ;;
 esac; done; shift $((OPTIND - 1))
 
 manifest="${1:-""}"
 
-# I should define this at the shell level
+# I should define these at the shell level
+stdErr () {
+    printf >&2 "%s\n" "${@}"
+}
 debug () {
-    [[ ${doDebug:+IS_SET} && $# -gt 0 ]] && printf >&2 "%s\n" "${*}" || true
+    [[ ${doDebug:+IS_SET} && $# -gt 0 ]] && stdErr "${@}" || true
 }
 
 # these next two are cool, I am keeping them for posterity,
@@ -35,7 +42,7 @@ noOrEmptyFile () {
 }
 exitIfNoOrEmptyFile () {
     local label="file"
-    local opt; while getopts l: opt; do case $opt in
+    local opt; OPTIND=1; while getopts l: opt; do case $opt in
         l) label="${OPTARG}" ;;
     esac; done; shift $((OPTIND - 1))
 
@@ -53,7 +60,7 @@ processVimPlugin () {
         opt*|"") aOrO="-o" ;;
         *)       aOrO="-a" ;;
     esac
-    addOrUpdateVimPlug ${where} "${aOrO}" $package
+    addOrUpdateVimPlug ${where} ${aOrO} $package
 }
 
 # this should probably be a generic function....
@@ -73,9 +80,27 @@ stripCommentsFromLine () {
     stripCommentsFromLine="${stripCommentsFromLine%%\"*}"
 }
 
+validatePlugCount () {
+    local -i installCnt=$(addOrUpdateVimPlug -l | wc -l)
+    local -i wantedCnt=$(grep -c -v -e '^ *#' -e '^ *$' "${manifest}")
+    if [[ $installCnt -eq $wantedCnt ]]; then
+        stdErr "Installation and wanted counts match."
+        true
+    else
+        stdErr "Installed and wanted counts do not match, please validate"
+        false
+    fi
+}
+
 exitIfNoOrEmptyFile -l manifest "${manifest}"
-while read -r line; do
+[[ $doUpdate ]] && while read -r line; do
     stripCommentsFromLine line
     processVimPlugin ${line}
 done < "${manifest}"
 
+if [[ $doCount ]]; then
+    validatePlugCount
+    rc=$?
+fi
+
+exit $rc
