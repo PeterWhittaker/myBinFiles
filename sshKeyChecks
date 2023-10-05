@@ -1,112 +1,157 @@
 #!/usr/bin/env bash
-[[ $1 == "-d" ]] && debug () { return 0; } || debug () { return 1; }
 
-myHost=$(hostname)
-myKeyDB=~/myKeyDB
-myKeyDB=$(echo $myKeyDB)
-
-declare -A myKeys
-declare -A myHosts
-declare -A keysToHosts
-
+# Do this first, no point doing anything else if it is missing
 workingDir=~/.ssh/
-workingDir=$(echo $workingDir)
+[[ ! -d $workingDir ]] && errorAndExit 1 "Cannot locate .ssh folder '${workingDir}', exiting"
+cd $workingDir || errorAndExit 3 "Cannot cd to .ssh folder '${workingDir}', exiting"
 
-cfgFile="${workingDir}/config"
+# convenience functions...
+stdErr ()       { printf >&2 "%s\n" "${*}"; }
+errorAndExit () { stdErr "${@:1}"; exit "${1:-1}"; }
 
-[[ ! -d $workingDir ]] && {
-    echo "Cannot locate .ssh folder '${workingDir}', exiting"
-    exit 1
+# debugging function and marker
+doDebug=""
+debug () { [[ $doDebug ]] && stdErr "${*}"; }
+
+# process command options, if any
+OPTIND=1; while getopts :d opt; do case $opt in
+    d) doDebug="yes" ;;
+    ?) stdErr "Unknown option '${OPTARG}'"      ;;
+    #:) stdErr "Missing value for '${OPTARG}' option"    ;;
+esac; done; shift $((OPTIND - 1))
+
+# we use this extensively
+myHost=$(hostname)
+# we do not use this, yet
+# myKeyDB=~/myKeyDB
+
+# all of our keys, if any
+declare -A myKeys
+# hosts we can reach, if any
+declare -A myHosts
+# keys to those hosts, if any
+declare -A keysToHosts
+# keys known to ssh-add, if any
+declare -A addedKeys
+
+# what keys are known to ssh-add?
+while read -r size hashAndFingerprint restOfLine; do
+    fingerprint="${hashAndFingerprint#*:}"
+    addedKeys[$fingerprint]="yes"
+done <<<$(ssh-add -l 2> /dev/null)
+
+readConfigFile () {
+    comment='^[[:space:]]#'
+    hostLine='^Host[[:space:]]'
+    allHosts='^Host[[:space:]]*\*$'
+    idenLine='^IdentityFile'
+    nameLine='^Hostname'
+    userLine='^User'
+    blankLine='^[[:space:]]*$'
+    curHost=''
+    curIden=''
+    curName=''
+    curUser=''
+    while read -r LINE; do
+        [[ $LINE =~ $blankLine || $LINE =~ $comment || $LINE =~ $allHosts ]] && continue
+        [[ $LINE =~ $hostLine ]] && {
+            [[ $curHost ]] && {
+                debug "'$myHost:$curHost:$curIden:$curName:$curUser'"
+                myHosts[${myHost}:${curHost}]="$curIden:$curName:$curUser"
+            }
+            curHost=${LINE##*[[:space:]]}
+        }
+        [[ $LINE =~ $idenLine ]] && {
+            curIden=$(basename ${LINE##*[[:space:]]})
+        }
+        [[ $LINE =~ $userLine ]] && {
+            curUser=${LINE##*[[:space:]]}
+        }
+        [[ $LINE =~ $nameLine ]] && {
+            curName=${LINE##*[[:space:]]}
+        }
+    done < $cfgFile
+    # get the last one
+    debug "'$myHost:$curHost:$curIden:$curName:$curUser'"
+    myHosts[${myHost}:${curHost}]="$curIden:$curName:$curUser"
 }
 
-cd $workingDir || {
-    echo "Cannot cd to .ssh folder '${workingDir}', exiting"
-    exit 3
+checkIfKeyIsKnown () {
+    local fingerPrint="${1:-""}"
+    if [[ $fingerPrint && ${addedKeys[$fingerPrint]} ]]; then
+        echo -e "\tThis key is known to ssh-add"
+    else
+        echo -e "\tThis key is NOT known to ssh-add"
+    fi
 }
 
 # first, get basic data about all of our keys
 for pubKey in *pub; do
-    privKey=$(basename $pubKey .pub)
-    fullDetails=$(ssh-keygen -l -f $pubKey)
-    read bitLength fullFingerPrint myId algorithm <<<${fullDetails}
-    algorithm=$(echo $algorithm | tr -d '()')
-    IFS=: read hashType fingerPrint <<<${fullFingerPrint}
-    debug && echo $fingerPrint $hashType $myId $algorithm $bitLength $privKey
+    privKey=$(basename "$pubKey" .pub)
+    fullDetails=$(ssh-keygen -l -f "$pubKey")
+    read -r bitLength fullFingerPrint myId algorithm <<<"${fullDetails}"
+    algorithm=$(echo "$algorithm" | tr -d '()')
+    IFS=: read -r hashType fingerPrint <<<"${fullFingerPrint}"
+    debug $fingerPrint $hashType $myId $algorithm $bitLength $privKey
     myKeys[${fingerPrint}]="$hashType:$privKey:$myId:$algorithm:$bitLength"
 done
 
-echo
-
-debug && for key in "${!myKeys[@]}"; do
-    echo ${myKeys[$key]}
+[[ $doDebug ]] && for key in "${!myKeys[@]}"; do
+    stdErr ${myKeys[$key]}
 done
 
-# check out each config entry
-[[ ! -f $cfgFile ]] && {
-    echo There is no cfgFile on this host
-}
-
-comment='^[[:space:]]#'
-hostLine='^Host[[:space:]]'
-idenLine='^IdentityFile'
-nameLine='^Hostname'
-userLine='^User'
-blankLine='^[[:space:]]*$'
-curHost=''
-curIden=''
-curName=''
-curUser=''
-while read -r LINE; do
-    [[ $LINE =~ $hostLine ]] && {
-        [[ ! -z $curHost ]] && {
-            debug && echo "'$myHost:$curHost:$curIden:$curName:$curUser'"
-            myHosts[${myHost}:${curHost}]="$curIden:$curName:$curUser"
-        }
-        curHost=${LINE##*[[:space:]]}
-    }
-    [[ $LINE =~ $idenLine ]] && {
-        curIden=$(basename ${LINE##*[[:space:]]})
-    }
-    [[ $LINE =~ $userLine ]] && {
-        curUser=${LINE##*[[:space:]]}
-    }
-    [[ $LINE =~ $nameLine ]] && {
-        curName=${LINE##*[[:space:]]}
-    }
-    [[ $LINE =~ $blankLine || $LINE =~ $comment ]] && continue
-done < $cfgFile
-# get the last one
-debug && echo "'$myHost:$curHost:$curIden:$curName:$curUser'"
-myHosts[${myHost}:${curHost}]="$curIden:$curName:$curUser"
-
+cfgFile="${workingDir}/config"
+# check out config entries, if any - this sets myHosts
+if [[ -f $cfgFile && -r $cfgFile && -s $cfgFile ]]; then
+    readConfigFile
+else
+    stdErr "There is no '${cfgFile}' on this host"
+fi
+# process any keys from ${cfgFile}
 for key in "${!myHosts[@]}"; do
     hostFrom=${key%:*}
     hostTo=${key#*:}
     echo $hostFrom goes to $hostTo using ${myHosts[$key]}
-    #continue
+
     thisKey=${myHosts[$key]%%:*}
+    [[ -z $thisKey ]] && { stdErr "Skipping '$key'; hostFrom: '$hostFrom'; hostTo: '$hostTo'"; continue; }
+
     fullDetails=$(ssh-keygen -l -f $thisKey)
-    read bitLength fullFingerPrint myId algorithm <<<${fullDetails}
+    read -r bitLength fullFingerPrint myId algorithm <<<${fullDetails}
     algorithm=$(echo $algorithm | tr -d '()')
-    IFS=: read hashType fingerPrint <<<${fullFingerPrint}
+    IFS=: read -r hashType fingerPrint <<<${fullFingerPrint}
     echo -e "\t\t\tFingerprint: $fingerPrint"
+    checkIfKeyIsKnown $fingerPrint
     echo
     keysToHosts[$thisKey]+="$hostTo "
 done
 
+# more information on each of our keys
 for key in "${!myKeys[@]}"; do
-    IFS=: read hashType keyFile theRest <<<${myKeys[$key]}
+    IFS=: read -r hashType keyFile theRest <<<${myKeys[$key]}
     keyGenMsg="${key}: $keyFile"
     keyDate=$(ls -l --time-style='+%Y-%m-%d' $keyFile 2> /dev/null|tr -s ' '| cut -d' ' -f6)
     [[ -z $keyDate ]] && keyDate=$(ls -l  $keyFile 2> /dev/null|tr -s ' '| cut -d' ' -f6-8)
-    [[ ! -z $keyDate ]] && keyGenMsg+=", generated $keyDate,"
+    [[ $keyDate ]] && keyGenMsg+=", generated $keyDate,"
     if [[ -z ${keysToHosts[$keyFile]} ]]; then
         echo $keyGenMsg is NOT used
     else
         echo $keyGenMsg is used for
     fi
+    hostsForThisKey=(${keysToHosts[$keyFile]})
+    numHosts=${#hostsForThisKey[@]}
+    hostCount=0
+    [[ $numHosts -gt 0 ]] && printf "\t\t"
     for host in ${keysToHosts[$keyFile]}; do
-        echo -e "\t\t$host"
+        printf $host
+        ((hostCount++))
+        if [[ $hostCount -lt $numHosts ]]; then
+            printf ", "
+        else
+            printf "\n"
+        fi
     done
+    checkIfKeyIsKnown $key
     echo
 done
+
