@@ -1,5 +1,26 @@
 #!/usr/bin/env bash
 
+if isMacOS; then
+    cat >&2 << 'EOF'
+
+    You probably do NOT want to run this. Please review the following
+
+        https://apple.stackexchange.com/questions/48502/how-can-i-permanently-add-my-ssh-private-key-to-keychain-so-it-is-automatically/250572#250572
+        https://docs.github.com/en/enterprise-cloud@latest/authentication/connecting-to-github-with-ssh/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent
+        https://superuser.com/questions/280808/filezilla-on-mac-sftp-with-passwordless-authentication
+
+    Keys should be added manually, and key handling specified in ~/.ssh/config
+EOF
+else
+    cat >&2 <<'EOF'
+
+    Keys are mostly/likely/only managed on the main laptop.
+
+    According to `isMacOS`, you are not on the main laptop.
+EOF
+fi
+exit 1
+
 myExit ()
 {
     [[ -n $1 ]] && { status=$1; shift; } || status=1
