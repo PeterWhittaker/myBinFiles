@@ -20,6 +20,7 @@ while getopts iV opt; do case $opt in
     *) printf >&2 "Unknown option '%s', ignoring\n" "${opt}" ;;
 esac; done
 shift $((OPTIND - 1))
+[[ $# -eq 1 && -d "$1" ]] && cd "$1"
 
 # are we doing a specific directory, or all?
 # first, check our cwd to determine if specific
