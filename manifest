@@ -25,6 +25,17 @@ isLinux && addThis selTest
 
 type brew &> /dev/null && addThis update
 
+# I don't remember why I started this, but this is
+# another way of managing platform conditionals
+#
+# haveBrew () {
+#     type brew &> /dev/null
+# }
+# declare -A conditionals=()
+# conditionals[addMyKeys]=isMacOS
+# conditionals[selTest]=isLinux
+# conditionals[update]=haveBrew
+
 [[ -d /etc/selinux ]] && addThis getSELinuxDefs
 # not conditional because MacOS pre-development
 addThis redundants
