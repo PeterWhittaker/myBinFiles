@@ -94,7 +94,11 @@ validatePlugCount () {
 
 exitIfNoOrEmptyFile -l manifest "${manifest}"
 [[ $doUpdate ]] && while read -r line; do
-    stripCommentsFromLine line
+    # we cannot use this because older BASH, e.g., RHEL 7,
+    # does not support variable references
+    #stripCommentsFromLine line
+    line="${line%%#*}"
+    line="${line%%\"*}"
     processVimPlugin ${line}
 done < "${manifest}"
 

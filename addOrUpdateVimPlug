@@ -1,14 +1,12 @@
 #!/usr/bin/env bash
 
-# consider integrating https://abletech.nz/resource/get-rid-of-your-vim-plugin-manager/
-
 set -u
 PACK_ROOT=~/.vim/pack
 listP () {
     local depth=${1:-1}
     find "${PACK_ROOT}" -mindepth $depth -maxdepth $depth -type d -print
 }
-listPackages () { local place; while read -r place; do printf "%40s\n" "${place#*/pack/}"; done <<<$(listP 3); }
+listPackages () { local place; while read -r place; do printf "%40s\n" "${place#*/pack/}"; done <<<"$(listP 3)"; }
 listPlaces () { local place; while read -r place; do echo ${place##*/}; done <<<$(listP 1) | sort -u; }
 
 ondemand="yes"
@@ -40,17 +38,25 @@ pathPart=""
 PACK_DIRECTORY="${PACK_ROOT}/${where}/${pathPart}"
 target=$(basename $package .git)
 
-gitCmdRoot="git -C ${PACK_DIRECTORY}"
 action=""
 preposition=""
 
+gitUpdate () {
+    cd "$PACK_DIRECTORY/$target" || { printf >&2 "Unable to 'cd %s/%s', exiting\n" "${PACK_DIRECTORY}" "${target}"; exit 1; } 
+    git pull --force
+}
+gitClone () {
+    mkdir -p "$PACK_DIRECTORY" || { printf >&2 "Unable to create '%s', exiting\n" "${PACK_DIRECTORY}"; exit 1; }
+    cd "$PACK_DIRECTORY" || { printf >&2 "Unable to 'cd %s', exiting\n" "${PACK_DIRECTORY}"; exit 1; } 
+    git clone "${package}"
+}
+
 if [[ -d "${PACK_DIRECTORY}/${target}" ]]; then
-    gitCmd="${gitCmdRoot}/${target} pull --force"
+    gitCmd=gitUpdate
     action="update"
     preposition=""
 else
-    mkdir -p "$PACK_DIRECTORY" || { printf >&2 "Unable to create '%s', exiting\n" "${PACK_DIRECTORY}"; exit 1; }
-    gitCmd="${gitCmdRoot} clone ${package}"
+    gitCmd=gitClone
     action="clone"
     preposition="to"
 fi
