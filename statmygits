@@ -104,6 +104,20 @@ addMissing () {
     [[ $doIt == "yes" ]] && makeOrUpdate
 }
 
+gitStatus () {
+    local dir=""
+    [[ $# -eq 1 ]] && dir="${1}"
+    if [[ $dir ]]; then
+        local gitStat=""
+        if git -C $dir status &> /dev/null; then
+            git -C $dir status
+        else
+            (cd $dir && git status)
+        fi
+    fi
+
+}
+
 for dir in "${DO_THESE[@]}"; do
     baseDir=$(basename "${dir}")
     compareWith=${DO_DIRS[$baseDir]}
@@ -131,7 +145,7 @@ for dir in "${DO_THESE[@]}"; do
             diff -q ${compareWith}/${file} ${dir}/${file} 2> /dev/null || { replaceOrSwap; continue; }
         done
 
-        [[ ${anyDiffs} = no ]] && { printf >&2 "No diffs, no need to change anything.\n"; git -C $dir status; } || true
+        [[ ${anyDiffs} = no ]] && { printf >&2 "No diffs, no need to change anything.\n"; gitStatus $dir ; } || true
     )
 
     if [[ $DOVIM ]]; then
