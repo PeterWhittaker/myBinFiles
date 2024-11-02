@@ -59,12 +59,12 @@ replaceOrSwap () {
     anyDiffs=yes
     diff $(diffColorOption) -u ${target}/${file} ${sourceDir}/${file}
     echo; echo "If + is wanted, 'y'; if - is wanted, 'swap'; 'd' deletes '-'; otherwise, anything else."
-    read -p "Replace $file in ~? " answer
+    read -r -p "Replace $file in ~? " answer
     case $answer in
-        y*|Y*)
+        y*|Y*|+)
             makeOrUpdate
             ;;
-        swap)
+        swap|-)
             replace
             ;;
         d)
@@ -149,7 +149,7 @@ for sourceDir in "${SOURCES[@]}"; do
                     replaceOrSwap
                 fi
             fi
-            if [[ -f ${target}/${file} && ${hardLinkedFiles[$file]:+IS_SET} ]]; then
+            if [[ -f ${target}/${file} && ! ${target}/${file} =~ ^. && ${hardLinkedFiles[$file]:+IS_SET} ]]; then
                 for linkToMake in ${hardLinkedFiles[$file]}; do
                     rm -f ${target}/${linkToMake}
                     ln ${target}/${file} ${target}/${linkToMake} || >&2 printf "Could not create link from '%s' to '%s'\n" ${target}/${file} ${target}/${linkToMake}
