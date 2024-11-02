@@ -1,9 +1,14 @@
 fileManifest=""
+declare -A hardLinkedFiles=()
 
 addThis () {
     fileManifest+=" $1"
 }
 
+addHardLinkedFile () {
+    addThis "$1"
+    hardLinkedFiles[$1]="${*:2}"
+}
 addThis mycopy
 addThis myflash
 addThis statmygits
@@ -22,6 +27,8 @@ addThis vimplugs
 isMacOS && addThis addMyKeys
 
 isLinux && addThis selTest
+
+isLinux && addHardLinkedFile tm tml tma tmd tmn
 
 type brew &> /dev/null && addThis update
 

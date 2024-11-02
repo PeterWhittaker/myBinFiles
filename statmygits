@@ -137,15 +137,27 @@ for dir in "${DO_THESE[@]}"; do
 
     (
         # this sets fileManifest
+        # this also sets hardLinkedFiles
         source "${theManifest}" || { printf >&2 "Cannot source '%s', exiting.\n" "${theManifest}"; exit 7; }
 
         anyDiffs=no
         for file in $fileManifest; do
-            [[ ! -f ${compareWith}/${file} ]] && { addMissing; continue; }
-            diff -q ${compareWith}/${file} ${dir}/${file} 2> /dev/null || { replaceOrSwap; continue; }
+            if [[ ! -f ${compareWith}/${file} ]]; then
+                addMissing
+            else
+                if ! diff -q ${compareWith}/${file} ${dir}/${file} 2> /dev/null; then
+                    replaceOrSwap
+                fi
+            fi
+            if [[ -f ${compareWith}/${file} && ${hardLinkedFiles[$file]:+IS_SET} ]]; then
+                for linkToMake in "${hardLinkedFiles[$file]}"; do
+                    rm -f ${compareWith}/${linkToMake}
+                    ln ${compareWith}/${file} ${compareWith}/${linkToMake}
+                done
+            fi
         done
 
-        [[ ${anyDiffs} = no ]] && { printf >&2 "No diffs, no need to change anything.\n"; gitStatus $dir ; } || true
+        [[ ${anyDiffs} == no ]] && { printf >&2 "No diffs, no need to change anything.\n"; gitStatus $dir ; } || true
     )
 
     if [[ $DOVIM ]]; then
