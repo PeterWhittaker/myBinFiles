@@ -28,7 +28,7 @@ isMacOS && addThis addMyKeys
 
 isLinux && addThis selTest
 
-isLinux && addHardLinkedFile tm tml tma tmd tmn
+isLinux && addHardLinkedFile tm tml tma tmd tmn tme
 
 type brew &> /dev/null && addThis update
 
