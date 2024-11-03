@@ -1,14 +1,3 @@
-fileManifest=""
-declare -A hardLinkedFiles=()
-
-addThis () {
-    fileManifest+=" $1"
-}
-
-addHardLinkedFile () {
-    addThis "$1"
-    hardLinkedFiles[$1]="${*:2}"
-}
 addThis mycopy
 addThis myflash
 addThis statmygits
