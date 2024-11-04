@@ -23,7 +23,7 @@ case $(basename $0) in
     tme) endSession="$1"        ;;
     tma) attachSession="$1"     ;;
     tmn) newSession="$1"        ;;
-    tmd) oneSession="$1"        ;;
+    tmd) oneSession="yes"       ;;
 esac
 
 declare -i setFunctions=0
