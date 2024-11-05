@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+
+showIcons=""
+current=$(defaults read com.apple.finder CreateDesktop)
+case $0 in
+    hide*)      [[ $current == true ]] && showIcons="false" ;;
+    show*)      [[ $current == false ]] && showIcons="true" ;;
+esac
+[[ ! $showIcons ]] && case $1 in
+    true|false) [[ $current != $1 ]] && showIcons=$1 ;;
+    hide)       [[ $current == true ]] && showIcons="false" ;;
+    show)       [[ $current == false ]] && showIcons="true" ;;
+    *)
+        case $current in
+            true) showIcons="false" ;;
+            false) showIcons="true" ;;
+        esac
+        ;;
+esac
+[[ $showIcons ]] && { defaults write com.apple.finder CreateDesktop $showIcons; killall Finder; }
+
