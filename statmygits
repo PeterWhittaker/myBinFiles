@@ -180,4 +180,18 @@ for sourceDir in "${SOURCES[@]}"; do
         fi
     fi
 
+    if [[ $baseDir == "myBinFiles" ]]; then
+        declare -a extras=()
+        while read -r; do
+            file=$(basename "$REPLY")
+            [[ -f $sourceDir/$file ]] && continue
+            extras+=($file)
+        done < <(ls "${target}")
+        [[ ${#extras[@]} -gt 0 ]] && printf "Extras:\t"
+        for file in "${extras[@]}"; do
+            printf "%s " $file
+        done
+        [[ ${#extras[@]} -gt 0 ]] && printf "\n"
+    fi
+
 done
