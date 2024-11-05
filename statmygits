@@ -10,6 +10,7 @@ DOVIM=""
 NODOVIM=""
 declare -A TARGET_DIRS=()
 declare -A hardLinkedFiles=()
+declare -a hardLinks=()
 declare fileManifest=""
 TARGET_DIRS[myBinFiles]=~/bin
 TARGET_DIRS[myDotFiles]=~
@@ -56,10 +57,12 @@ fi
 # carry on....
 
 addThis () {
+    # TK add defensive uniqueness check
     fileManifest+=" $1"
 }
 
 addHardLinkedFile () {
+    # TK add defensive uniqueness check
     addThis "$1"
     hardLinkedFiles[$1]="${*:2}"
 }
@@ -176,6 +179,7 @@ for sourceDir in "${SOURCES[@]}"; do
             fi
             if [[ -f ${targetDir}/${file} && ${hardLinkedFiles[$file]:+IS_SET} ]]; then
                 for linkToMake in ${hardLinkedFiles[$file]}; do
+                    hardLinks+=(${linkToMake})
                     rm -f ${targetDir}/${linkToMake}
                     ln ${targetDir}/${file} ${targetDir}/${linkToMake} || >&2 printf "Could not create link from '%s' to '%s'\n" ${targetDir}/${file} ${targetDir}/${linkToMake}
                 done
@@ -183,6 +187,23 @@ for sourceDir in "${SOURCES[@]}"; do
         done
 
         [[ ${anyDiffs} == no ]] && { printf >&2 "No diffs, no need to change anything.\n"; gitStatus $sourceDir ; } || true
+
+        if [[ $baseDir == "myBinFiles" ]]; then
+            declare -a extras=()
+            while read -r; do
+                file=$(basename "$REPLY")
+                [[ -f $sourceDir/$file ]] && continue
+                for linkFile in ${hardLinks[@]}; do
+                    [[ ${file} == "${linkFile}" ]] && continue 2
+                done
+                extras+=($file)
+            done < <(ls "${targetDir}")
+            [[ ${#extras[@]} -gt 0 ]] && printf "Extras:\t"
+            for file in "${extras[@]}"; do
+                printf "%s " $file
+            done
+            [[ ${#extras[@]} -gt 0 ]] && printf "\n"
+        fi
     )
 
     if [[ $DOVIM ]]; then
@@ -192,20 +213,6 @@ for sourceDir in "${SOURCES[@]}"; do
             printf >&2 "Update bin files first, please\n"
             exit 1
         fi
-    fi
-
-    if [[ $baseDir == "myBinFiles" ]]; then
-        declare -a extras=()
-        while read -r; do
-            file=$(basename "$REPLY")
-            [[ -f $sourceDir/$file ]] && continue
-            extras+=($file)
-        done < <(ls "${targetDir}")
-        [[ ${#extras[@]} -gt 0 ]] && printf "Extras:\t"
-        for file in "${extras[@]}"; do
-            printf "%s " $file
-        done
-        [[ ${#extras[@]} -gt 0 ]] && printf "\n"
     fi
 
 done
