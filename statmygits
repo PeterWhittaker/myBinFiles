@@ -8,17 +8,23 @@ VIMPACKS="vimpacks"
 MANIFEST="manifest"
 DOVIM=""
 NODOVIM=""
-declare -A SOURCE_DIRS=()
+declare -A TARGET_DIRS=()
 declare -A hardLinkedFiles=()
 declare fileManifest=""
-SOURCE_DIRS[myBinFiles]=~/bin
-SOURCE_DIRS[myDotFiles]=~
+TARGET_DIRS[myBinFiles]=~/bin
+TARGET_DIRS[myDotFiles]=~
 declare -a SOURCES=()
 
-init=""
-while getopts iV opt; do case $opt in
+options=":"     # handle option errors specifically
+options+="i"  ; init=""
+options+="V"  ; NODOVIM=""
+options+="b"  ; # check myBinFiles
+options+="d"  ; # check myDotFiles
+while getopts $options opt; do case $opt in
     i) init="yes";;
     V) NODOVIM="yesWhichMeansNo" ;;
+    b) SOURCES+=(myBinFiles)     ;;
+    d) SOURCES+=(myDotFiles)     ;;
     *) printf >&2 "Unknown option '%s', ignoring\n" "${opt}" ;;
 esac; done
 shift $((OPTIND - 1))
@@ -28,18 +34,18 @@ shift $((OPTIND - 1))
 # first, check our cwd to determine if specific
 myDir=$(pwd)
 baseDir=$(basename "${myDir}")
-for sourceDir in "${!SOURCE_DIRS[@]}"; do
-    [[ $baseDir == "$sourceDir" ]] && { SOURCES+=("$myDir"); break; }
+for targetDir in "${!TARGET_DIRS[@]}"; do
+    [[ $baseDir == "$targetDir" ]] && { SOURCES+=("$myDir"); break; }
 done
 
 if [[ ${#SOURCES[@]} -eq 0 ]]; then
     # we are doing all of them....
     # first, make sure we can find one and only one of each one
-    for sourceDir in "${!SOURCE_DIRS[@]}"; do
-        possibleDir=$(find ~ -xdev -type d -name ${sourceDir} -print 2> /dev/null)
+    for targetDir in "${!TARGET_DIRS[@]}"; do
+        possibleDir=$(find ~ -xdev -type d -name ${targetDir} -print 2> /dev/null)
         dirCount=$(echo "${possibleDir}" | wc -l)
         if [[ $dirCount -ne 1 ]]; then
-            printf >&2 "For '%s', wanted one sourceDir, got %s, skipping\n" "${sourceDir}" "${dirCount}"
+            printf >&2 "For '%s', wanted one targetDir, got %s, skipping\n" "${targetDir}" "${dirCount}"
             continue
         fi
         SOURCES+=("$possibleDir")
@@ -68,7 +74,7 @@ diffColorOption () {
 
 replaceOrSwap () {
     anyDiffs=yes
-    diff $(diffColorOption) -u ${target}/${file} ${sourceDir}/${file}
+    diff $(diffColorOption) -u ${targetDir}/${file} ${sourceDir}/${file}
     echo; echo "If + is wanted, 'y'; if - is wanted, 'swap'; 'd' deletes '-'; otherwise, anything else."
     read -r -p "Replace $file in ~? " answer
     case $answer in
@@ -79,7 +85,7 @@ replaceOrSwap () {
             replace
             ;;
         d)
-            rm ${target}/${file}
+            rm ${targetDir}/${file}
             ;;
         *)
             :
@@ -88,11 +94,11 @@ replaceOrSwap () {
 }
 
 replace () {
-    cp -p ${target}/${file} ${sourceDir}/${file} || printf >&2 "Error copying!!!\n"
+    cp -p ${targetDir}/${file} ${sourceDir}/${file} || printf >&2 "Error copying!!!\n"
 }
 
 makeOrUpdate () {
-    cp -p ${sourceDir}/${file} ${target}/${file} || printf >&2 "Error copying!!!\n"
+    cp -p ${sourceDir}/${file} ${targetDir}/${file} || printf >&2 "Error copying!!!\n"
 }
 
 addMissing () {
@@ -101,7 +107,7 @@ addMissing () {
     if [[ $init == "yes" ]]; then
         doIt="yes"
     else
-        echo "The file '${target}/${file}' does not exist;"
+        echo "The file '${targetDir}/${file}' does not exist;"
         read -p "createit from '${sourceDir}/${file}'? " answer
         case $answer in
             y*|Y*)
@@ -131,11 +137,11 @@ gitStatus () {
 
 for sourceDir in "${SOURCES[@]}"; do
     baseDir=$(basename "${sourceDir}")
-    target=${SOURCE_DIRS[$baseDir]}
+    targetDir=${TARGET_DIRS[$baseDir]}
     case $baseDir in
         myBinFiles)
-            if [[ ! -f $target ]]; then
-                mkdir -p $target
+            if [[ ! -f $targetDir ]]; then
+                mkdir -p $targetDir
             fi
             DOVIM=""
             ;;
@@ -143,8 +149,16 @@ for sourceDir in "${SOURCES[@]}"; do
             [[ ! $NODOVIM ]] && DOVIM="yes"
             ;;
     esac
-    theManifest="${sourceDir}/${MANIFEST}"
-    [[ ! -f ${theManifest} || ! -s ${theManifest} ]] && { printf >&2 "No manifest, very odd, skipping '%s'.\n" "${sourceDir}"; continue; }
+    # are we actually in the sourceDir?
+    foundManifest=""
+    for possibleSourceDir in "${sourceDir}" ~/"${sourceDir}" ~/"myPlumbing/${sourceDir}"; do
+        possibleSourceDir=$(realpath ${possibleSourceDir})
+        theManifest="${possibleSourceDir}/${MANIFEST}"
+        [[ ! -f ${theManifest} || ! -s ${theManifest} ]] && continue
+        foundManifest="yes" && break
+    done
+    [[ ! $foundManifest ]] && { printf >&2 "No manifest, very odd, skipping '%s'.\n" "${sourceDir}"; continue; }
+    sourceDir="${possibleSourceDir}"
 
     (
         # this sets fileManifest
@@ -153,17 +167,17 @@ for sourceDir in "${SOURCES[@]}"; do
 
         anyDiffs=no
         for file in $fileManifest; do
-            if [[ ! -f ${target}/${file} ]]; then
+            if [[ ! -f ${targetDir}/${file} ]]; then
                 addMissing
             else
-                if ! diff -q ${target}/${file} ${sourceDir}/${file} 2> /dev/null; then
+                if ! diff -q ${targetDir}/${file} ${sourceDir}/${file} 2> /dev/null; then
                     replaceOrSwap
                 fi
             fi
-            if [[ -f ${target}/${file} && ${hardLinkedFiles[$file]:+IS_SET} ]]; then
+            if [[ -f ${targetDir}/${file} && ${hardLinkedFiles[$file]:+IS_SET} ]]; then
                 for linkToMake in ${hardLinkedFiles[$file]}; do
-                    rm -f ${target}/${linkToMake}
-                    ln ${target}/${file} ${target}/${linkToMake} || >&2 printf "Could not create link from '%s' to '%s'\n" ${target}/${file} ${target}/${linkToMake}
+                    rm -f ${targetDir}/${linkToMake}
+                    ln ${targetDir}/${file} ${targetDir}/${linkToMake} || >&2 printf "Could not create link from '%s' to '%s'\n" ${targetDir}/${file} ${targetDir}/${linkToMake}
                 done
             fi
         done
@@ -186,7 +200,7 @@ for sourceDir in "${SOURCES[@]}"; do
             file=$(basename "$REPLY")
             [[ -f $sourceDir/$file ]] && continue
             extras+=($file)
-        done < <(ls "${target}")
+        done < <(ls "${targetDir}")
         [[ ${#extras[@]} -gt 0 ]] && printf "Extras:\t"
         for file in "${extras[@]}"; do
             printf "%s " $file
