@@ -19,7 +19,7 @@ isMacOS && addHardLinkedFile icons hideicons showicons
 
 isLinux && addThis selTest
 
-isLinux && addHardLinkedFile tm tml tma tmd tmn tme
+isLinux && addHardLinkedFile tm tml tma tmd tmn tme tmp
 
 type brew &> /dev/null && addThis update
 
