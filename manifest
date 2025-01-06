@@ -16,6 +16,7 @@ addThis vimplugs
 isMacOS && addThis addMyKeys
 isMacOS && addThis icons
 isMacOS && addHardLinkedFile icons hideicons showicons
+isMacOS && addThis getValues
 
 isLinux && addThis selTest
 

@@ -1,0 +1,144 @@
+#!/usr/bin/env bash
+
+stdErr () {
+    >&2 printf "%s\n" "$@"
+}
+
+setupCommands=""
+while [[ $# -gt 0 ]]; do
+    if [[ $1 == "-s" ]]; then
+        shift
+        setupCommands=$(dirname "$0")
+        baseCommand="getValues"
+        testCommand="noValuesTest"
+        if [[ $1 == "-n" ]]; then
+            shift
+            noValuesTest="yes"
+        fi
+    else
+        stdErr "Invalid options: '$*'"
+        exit 1
+    fi
+done
+
+case $OSTYPE in
+    darwin*)
+        copyit () { pbcopy; }; pasteit () { pbpaste; };;
+    *)
+        stdErr "platform $OSTYPE not supported" ;;
+esac
+
+whatValue () {
+    copyit
+    echo
+    pasteit
+    echo
+}
+
+declare -a pasteValues=()
+pasteValues[0]="nop placeholder"
+declare -A commandMappings=()
+
+commandMappings[getValues]="usageValues"
+usageValues () {
+    pasteValues[1]="echo 'This utility copies desired values to...'"
+    pasteValues[2]="echo '...the clipboard. It is invoked using a...'"
+    pasteValues[3]="echo '...hardlinked file whose basename must have...'"
+    pasteValues[4]="echo '...a commandMapping to map that name to a...'"
+    pasteValues[5]="echo '...map setting function that defines elements...'"
+    pasteValues[6]="echo '...of the pasteValues array starting at 1 and...'"
+    pasteValues[7]="echo '...increasing monotonically by 1."
+}
+
+commandMappings[ta2]="setTA2Values"
+setTA2Values () {
+    pasteValues[1]="echo 'cat ./purifile_lib/examples/config.json'"
+    pasteValues[2]="echo 'cargo run --bin purifile_lib -- ./purifile_lib/examples/config.json'"
+    pasteValues[3]="cat $(realpath ~/licence)"
+    pasteValues[4]="echo 'purifile_lib/examples/TestPolicy.pol'"
+    pasteValues[5]="echo 'PuriFileUserManual.pdf'"
+    pasteValues[6]="echo 'unzip -l output.txt'"
+}
+
+commandMappings[ugw_test_values]="setUgwValues"
+setUgwValues () {
+    pasteValues[1]="echo 'password123!'"
+    pasteValues[2]="echo 'zaq1@WSXcde3$RFV'"
+    pasteValues[3]="echo 'Sphyrna2020!'"
+    pasteValues[4]="echo 'Sphyrna2019!'"
+    pasteValues[5]="echo 'secadm1'"
+    pasteValues[6]="echo '10.0.65.50'"
+    pasteValues[7]="echo '10.0.64.50'"
+    pasteValues[8]="echo '10.0.129.50'"
+    pasteValues[9]="echo '10.0.128.50'"
+    pasteValues[10]="echo '/mnt/ramdisk/ftp-source'"
+    pasteValues[11]="echo '/mnt/ramdisk/ftp-destination'"
+}
+
+[[ -f ~/.getValuesRc ]] && source ~/.getValuesRc
+
+invokedAs=$(basename "$0")
+if [[ $setupCommands ]]; then
+    for command in "$testCommand" "${!commandMappings[@]}"; do
+
+        noNeedMsg="no need to set up '$command'"
+
+        # there should be a command $testCommand, but without a mapping, that's the point of it:
+        # to report an error when invoked as $testCommand
+        if [[ $invokedAs == "$testCommand" ]]; then
+            if [[ $noValuesTest ]]; then
+                stdErr "$noNeedMsg"
+                noValuesTest=""
+            fi
+        fi
+
+        # no need to check this one, obviously it exists - we were invoked that way
+        [[ $command == "$invokedAs" ]] && continue
+
+        tgtCommand="$setupCommands/$command"
+        srcCommand="$setupCommands/$invokedAs"
+        # check if the command exists
+        if [[ ! -x "$tgtCommand" ]]; then
+            stdErr "setting up command '$command' as link to '$srcCommand'"
+            ln "$srcCommand" "$tgtCommand"
+        else
+            stdErr "$noNeedMsg"
+        fi
+    done
+    exit
+fi
+
+getValue () { ${pasteValues[$1]} | whatValue; }
+
+getValues () {
+    local timeout=""
+    while getopts t: opt; do
+        case $opt in
+            t) timeout="-t ${OPTARG}";;
+        esac
+    done
+    local maxValues="${#pasteValues[@]}"
+    while true; do
+        for ((cnt=1; cnt < maxValues; cnt++)); do
+            printf "${cnt}. %s\n" "${pasteValues[$cnt]}"
+        done
+        read -r ${timeout} -p "Which value? "
+        [[ $? -gt 128 ]] && break
+        [[ "$REPLY" =~ ^[0-9][0-9]?$ && $REPLY -ge 1 && $REPLY -le $maxValues ]] && getValue ${REPLY}
+    done
+}
+
+setFunction="${commandMappings[$invokedAs]}"
+if ! declare -f "$setFunction" >& /dev/null; then
+    stdErr
+    stdErr "No such mapping '$invokedAs', exiting"
+    stdErr
+    stdErr "Known mappings include:"
+    for mapping in "${!commandMappings[@]}"; do
+        >&2 printf "%15s:\t%s\n" "$mapping" "${commandMappings[$mapping]}"
+    done
+    exit 1
+fi
+
+$setFunction
+getValues
