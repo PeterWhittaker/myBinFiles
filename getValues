@@ -41,38 +41,38 @@ declare -A commandMappings=()
 
 commandMappings[getValues]="usageValues"
 usageValues () {
-    pasteValues[1]="echo 'This utility copies desired values to...'"
-    pasteValues[2]="echo '...the clipboard. It is invoked using a...'"
-    pasteValues[3]="echo '...hardlinked file whose basename must have...'"
-    pasteValues[4]="echo '...a commandMapping to map that name to a...'"
-    pasteValues[5]="echo '...map setting function that defines elements...'"
-    pasteValues[6]="echo '...of the pasteValues array starting at 1 and...'"
-    pasteValues[7]="echo '...increasing monotonically by 1."
+    pasteValues[1]='echo "This utility copies desired values to..."'
+    pasteValues[2]='echo "...the clipboard. It is invoked using a..."'
+    pasteValues[3]='echo "...hardlinked file whose basename must have..."'
+    pasteValues[4]='echo "...a commandMapping to map that name to a..."'
+    pasteValues[5]='echo "...map setting function that defines elements..."'
+    pasteValues[6]='echo "...of the pasteValues array starting at 1 and..."'
+    pasteValues[7]='echo "...increasing monotonically by 1.'
 }
 
 commandMappings[ta2]="setTA2Values"
 setTA2Values () {
-    pasteValues[1]="echo 'cat ./purifile_lib/examples/config.json'"
-    pasteValues[2]="echo 'cargo run --bin purifile_lib -- ./purifile_lib/examples/config.json'"
+    pasteValues[1]='echo cat ./purifile_lib/examples/config.json'
+    pasteValues[2]='echo cargo run --bin purifile_lib -- ./purifile_lib/examples/config.json'
     pasteValues[3]="cat $(realpath ~/licence)"
-    pasteValues[4]="echo 'purifile_lib/examples/TestPolicy.pol'"
-    pasteValues[5]="echo 'PuriFileUserManual.pdf'"
-    pasteValues[6]="echo 'unzip -l output.txt'"
+    pasteValues[4]='echo purifile_lib/examples/TestPolicy.pol'
+    pasteValues[5]='echo PuriFileUserManual.pdf'
+    pasteValues[6]='echo unzip -l output.txt'
 }
 
 commandMappings[ugw_test_values]="setUgwValues"
 setUgwValues () {
-    pasteValues[1]="echo 'password123!'"
-    pasteValues[2]="echo 'zaq1@WSXcde3$RFV'"
-    pasteValues[3]="echo 'Sphyrna2020!'"
-    pasteValues[4]="echo 'Sphyrna2019!'"
-    pasteValues[5]="echo 'secadm1'"
-    pasteValues[6]="echo '10.0.65.50'"
-    pasteValues[7]="echo '10.0.64.50'"
-    pasteValues[8]="echo '10.0.129.50'"
-    pasteValues[9]="echo '10.0.128.50'"
-    pasteValues[10]="echo '/mnt/ramdisk/ftp-source'"
-    pasteValues[11]="echo '/mnt/ramdisk/ftp-destination'"
+    pasteValues[1]='echo password123!'
+    pasteValues[2]='echo zaq1@WSXcde3$RFV'
+    pasteValues[3]='echo Sphyrna2020!'
+    pasteValues[4]='echo Sphyrna2019!'
+    pasteValues[5]='echo secadm1'
+    pasteValues[6]='echo 10.0.65.50'
+    pasteValues[7]='echo 10.0.64.50'
+    pasteValues[8]='echo 10.0.129.50'
+    pasteValues[9]='echo 10.0.128.50'
+    pasteValues[10]='echo /mnt/ramdisk/ftp-source'
+    pasteValues[11]='echo /mnt/ramdisk/ftp-destination'
 }
 
 [[ -f ~/.getValuesRc ]] && source ~/.getValuesRc
@@ -108,7 +108,7 @@ if [[ $setupCommands ]]; then
     exit
 fi
 
-getValue () { ${pasteValues[$1]} | whatValue; }
+getValue () { lastReply="$1"; ${pasteValues[$1]} | whatValue; }
 
 getValues () {
     local timeout=""
@@ -120,12 +120,25 @@ getValues () {
     local maxValues="${#pasteValues[@]}"
     while true; do
         for ((cnt=1; cnt < maxValues; cnt++)); do
-            printf "${cnt}. %s\n" "${pasteValues[$cnt]}"
+            printf "${cnt}. %s\n" "$(${pasteValues[$cnt]})"
         done
         read -r ${timeout} -p "Which value? "
         [[ $? -gt 128 ]] && break
+        if [[ $REPLY =~ ^: ]]; then
+            addValue "$REPLY"
+            maxValues="${#pasteValues[@]}"
+            echo
+            continue
+        fi
+        [[ $lastReply && ! $REPLY ]] && getValue $lastReply
         [[ "$REPLY" =~ ^[0-9][0-9]?$ && $REPLY -ge 1 && $REPLY -le $maxValues ]] && getValue ${REPLY}
     done
+}
+
+addValue () {
+    local curMax="${#pasteValues[@]}"
+    local newVal="${REPLY#:}"
+    pasteValues[$curMax]="echo '${newVal}'"
 }
 
 setFunction="${commandMappings[$invokedAs]}"
