@@ -43,45 +43,74 @@ done <<<$(ssh-add -l 2> /dev/null)
 readConfigFile () {
     comment='^[[:space:]]#'
     hostLine='^Host[[:space:]]'
-    allHosts='^Host[[:space:]]*\*$'
-    idenLine='^IdentityFile'
-    nameLine='^Hostname'
-    userLine='^User'
+    allHosts='^Host[[:space:]]*\*'
+    idenLine='^[[:space:]]*IdentityFile'
+    nameLine='^[[:space:]]*Hostname'
+    userLine='^[[:space:]]*User'
     blankLine='^[[:space:]]*$'
     curHost=''
     curIden=''
     curName=''
     curUser=''
+    reading=""
     while read -r LINE; do
-        [[ $LINE =~ $blankLine || $LINE =~ $comment || $LINE =~ $allHosts ]] && continue
-        [[ $LINE =~ $hostLine ]] && {
-            [[ $curHost ]] && {
-                debug "'$myHost:$curHost:$curIden:$curName:$curUser'"
-                myHosts[${myHost}:${curHost}]="$curIden:$curName:$curUser"
-            }
-            curHost=${LINE##*[[:space:]]}
-        }
-        [[ $LINE =~ $idenLine ]] && {
-            curIden=$(basename ${LINE##*[[:space:]]})
-        }
-        [[ $LINE =~ $userLine ]] && {
-            curUser=${LINE##*[[:space:]]}
-        }
-        [[ $LINE =~ $nameLine ]] && {
-            curName=${LINE##*[[:space:]]}
-        }
+        if [[ $LINE =~ $blankLine ]]; then
+            if [[ $reading ]]; then
+                # we were reading a Host entry, and we have come to the end of it
+                # handle the case where there was no Hostname line: use the contents of Host line
+                [[ ! $curName ]] && curName="${curHost}"
+                myHosts[${myHost}:${curName}]="$curIden:$curHost:$curUser"
+                curHost=''
+                curIden=''
+                curName=''
+                curUser=''
+                reading=""
+            fi
+            # regardless of whether or not we were reading, head to the next line
+            continue
+        fi
+
+        # skip comments, regardless of state
+        [[ $LINE =~ $comment ]] && continue
+
+        if [[ $LINE =~ $hostLine && ! $LINE =~ $allHosts ]]; then
+            # we have found an entry block, so start reading
+            reading="yes"
+            # this is the easiest way to remove leading spaces...
+            curHost=$(echo ${LINE#*[[:space:]]})
+            continue
+        fi
+
+        # pick out what we care about when reading
+        if [[ $reading ]]; then
+            [[ $LINE =~ $idenLine ]] && curIden=$(basename ${LINE##*[[:space:]]})
+            [[ $LINE =~ $userLine ]] && curUser=${LINE##*[[:space:]]}
+            [[ $LINE =~ $nameLine ]] && curName=${LINE##*[[:space:]]}
+            continue
+        fi
+
+        # if we get here and WERE reading, we found something
+        # we don't know about but might care about
+        if [[ $reading ]]; then
+            stdErr "Found '$LINE' while reading: Should we care?"
+        fi
+
+        # if we get here either we've reported on something that
+        # maybe we should care about or we weren't reading, so
+        continue
+        # which would happen at the done anyway
+
     done < $cfgFile
     # get the last one
     debug "'$myHost:$curHost:$curIden:$curName:$curUser'"
-    myHosts[${myHost}:${curHost}]="$curIden:$curName:$curUser"
 }
 
 checkIfKeyIsKnown () {
     local fingerPrint="${1:-""}"
     if [[ $fingerPrint && ${addedKeys[$fingerPrint]} ]]; then
-        echo -e "\tThis key is known to ssh-add"
+        printf "\tThis key is known to ssh-add"
     else
-        echo -e "\tThis key is NOT known to ssh-add"
+        printf "\tThis key is NOT known to ssh-add"
     fi
 }
 
@@ -107,24 +136,39 @@ if [[ -f $cfgFile && -r $cfgFile && -s $cfgFile ]]; then
 else
     stdErr "There is no '${cfgFile}' on this host"
 fi
+
 # process any keys from ${cfgFile}
+declare -i maxHostKey=0
+declare -i maxHostFrom=0
+declare -i maxHostTo=0
+for key in "${!myHosts[@]}"; do
+    hostFrom=${key%:*};        hostFromLen=${#hostFrom}; (( hostFromLen > maxHostFrom )) && (( maxHostFrom = hostFromLen ))
+    hostTo=${key#*:};          hostToLen=${#hostTo};     (( hostToLen > maxHostTo ))     && (( maxHostTo = hostToLen ))
+    hostKeyInfo=${myHosts[$key]}; hostKey=${hostKeyInfo%:*};
+                               hostKeyLen=${#hostKey};   (( hostKeyLen > maxHostKey ))   && (( maxHostKey = hostKeyLen ))
+   echo $hostFrom $hostTo $hostKey
+done
+
+declare -a skippedKeys=()
 for key in "${!myHosts[@]}"; do
     hostFrom=${key%:*}
     hostTo=${key#*:}
-    echo $hostFrom goes to $hostTo using ${myHosts[$key]}
-
+    hostKeyInfo=${myHosts[$key]}; hostKey=${hostKeyInfo%:*};
+    printf "%-${maxHostFrom}s goes to %-${maxHostTo}s using %-${maxHostKey}s" $hostFrom $hostTo $hostKeyInfo
     thisKey=${myHosts[$key]%%:*}
-    [[ -z $thisKey ]] && { stdErr "Skipping '$key'; hostFrom: '$hostFrom'; hostTo: '$hostTo'"; continue; }
+    [[ -z $thisKey ]] && { skippedKeys+=("Skipping '$key'; hostFrom: '$hostFrom'; hostTo: '$hostTo'"); printf "\n"; continue; }
 
     fullDetails=$(ssh-keygen -l -f $thisKey)
     read -r bitLength fullFingerPrint myId algorithm <<<${fullDetails}
-    algorithm=$(echo $algorithm | tr -d '()')
     IFS=: read -r hashType fingerPrint <<<${fullFingerPrint}
-    echo -e "\t\t\tFingerprint: $fingerPrint"
+    printf "\t($fingerPrint)"
     checkIfKeyIsKnown $fingerPrint
-    echo
+    printf "\n"
     keysToHosts[$thisKey]+="$hostTo "
 done
+printf "\n"
+printf "%s\n" "${skippedKeys[@]}"
+printf "\n"
 
 # more information on each of our keys
 for key in "${!myKeys[@]}"; do
@@ -134,24 +178,24 @@ for key in "${!myKeys[@]}"; do
     [[ -z $keyDate ]] && keyDate=$(ls -l  $keyFile 2> /dev/null|tr -s ' '| cut -d' ' -f6-8)
     [[ $keyDate ]] && keyGenMsg+=", generated $keyDate,"
     if [[ -z ${keysToHosts[$keyFile]} ]]; then
-        echo $keyGenMsg is NOT used
+        printf "%s is NOT used" $keyGenMsg
     else
-        echo $keyGenMsg is used for
+        printf "%s is used for: " $keyGenMsg
+        hostsForThisKey=(${keysToHosts[$keyFile]})
+        numHosts=${#hostsForThisKey[@]}
+        hostCount=0
+        [[ $numHosts -gt 0 ]] && printf "\t\t"
+        for host in ${keysToHosts[$keyFile]}; do
+            printf $host
+            ((hostCount++))
+            if [[ $hostCount -lt $numHosts ]]; then
+                printf ", "
+            else
+                printf "\t"
+            fi
+        done
     fi
-    hostsForThisKey=(${keysToHosts[$keyFile]})
-    numHosts=${#hostsForThisKey[@]}
-    hostCount=0
-    [[ $numHosts -gt 0 ]] && printf "\t\t"
-    for host in ${keysToHosts[$keyFile]}; do
-        printf $host
-        ((hostCount++))
-        if [[ $hostCount -lt $numHosts ]]; then
-            printf ", "
-        else
-            printf "\n"
-        fi
-    done
     checkIfKeyIsKnown $key
-    echo
+    printf "\n"
 done
 
