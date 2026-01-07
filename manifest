@@ -12,6 +12,7 @@ addThis sshKeyChecks
 addThis compareRemotes
 addThis addOrUpdateVimPlug
 addThis vimplugs
+addThis gitHooks
 
 isMacOS && addThis addMyKeys
 isMacOS && addThis icons

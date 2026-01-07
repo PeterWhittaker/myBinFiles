@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+
+if ! command -v ctags 2>&1 /dev/null; then
+    >&2 echo "No ctags, exiting; consider installing"
+    exit 1
+else
+    >&2 echo "Proceeding with ctags setup"
+fi
+
+# idempotent
+# shellcheck disable=SC2088 # we want the exact string
+git config --global init.templatedir '~/.git_template'
+HOOKDIR=~/.git_template/hooks
+mkdir -p "$HOOKDIR"
+CTAGS="$HOOKDIR/ctags"
+POST="$HOOKDIR/post-"
+
+cat << 'EOF' > "$CTAGS"
+#!/usr/bin/env bash
+set -e
+if ! command -v ctags &> /dev/null; then
+    >&2 echo "No ctags, exiting; consider installing"
+    exit 0 # exit clean so that git commands reflect proper status (maybe)
+fi
+dir="`git rev-parse --git-dir`"
+trap 'rm -f "$dir/tags.$$"' EXIT INT TERM
+git ls-files|ctags --tag-relative -L - -f$dir/tags.$$
+mv $dir/tags.$$ $dir/tags
+EOF
+chmod +x "$CTAGS"
+
+declare -a hookLinks=()
+hookLinks+=(applypatch)
+hookLinks+=(checkout)
+hookLinks+=(commit)
+hookLinks+=(merge)
+hookLinks+=(rewrite)
+hookLinks+=(switch)
+
+for hookLink in "${hookLinks[@]}"; do
+    hookFile="$POST${hookLink}"
+    {
+        echo '#!/usr/bin/env bash'
+        if [[ $hookLink == rewrite ]]; then
+            # special case
+            # shellcheck disable=SC2016
+            echo '[[ $1 == rebase ]] && exec .git/hooks/post-merge'
+        else
+            # general case
+            echo '.git/hooks/ctags &> /dev/null &'
+        fi
+    } > "${hookFile}"
+    chmod +x "${hookFile}"
+done
+
