@@ -68,17 +68,15 @@ addHardLinkedFile () {
     hardLinkedFiles[$1]="${*:2}"
 }
 
-diffColorOption () {
-    if diff --color=always 2> /dev/null; then
-        echo "--color=always"
-    else
-        echo ""
-    fi
+diffWithColorOption () {
+    local colorOption=""
+    diff --color=always 2> /dev/null && colorOption="--color=always"
+    diff $colorOption -u "${@}"
 }
 
 replaceOrSwap () {
     anyDiffs=yes
-    diff $(diffColorOption) -u "${targetDir}/${file}" "${sourceDir}/${file}"
+    diffWithColorOption "${targetDir}/${file}" "${sourceDir}/${file}"
     echo; echo "If + is wanted, 'y'; if - is wanted, 'swap'; 'd' deletes '-'; otherwise, anything else."
     read -r -p "Replace $file in ~? " answer
     case $answer in
