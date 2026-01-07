@@ -78,7 +78,7 @@ diffColorOption () {
 
 replaceOrSwap () {
     anyDiffs=yes
-    diff "$(diffColorOption)" -u "${targetDir}/${file}" "${sourceDir}/${file}"
+    diff $(diffColorOption) -u "${targetDir}/${file}" "${sourceDir}/${file}"
     echo; echo "If + is wanted, 'y'; if - is wanted, 'swap'; 'd' deletes '-'; otherwise, anything else."
     read -r -p "Replace $file in ~? " answer
     case $answer in
