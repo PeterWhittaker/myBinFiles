@@ -50,7 +50,13 @@ pickSession () {
     readarray -t sessions < <(tmux list-sessions)
     if [[ ${#sessions[@]} -eq 0 ]]; then
         >&2 echo "Can neither attach nor list, there are no sessions active"
-        exit 1
+        >&2 read -r -t 10 -p "Press enter to start 'default', anything else to exit: "
+        if [[ $? -gt 128 || $REPLY != "" ]]; then
+            exit 1
+        else
+            tmux new-session -s default
+            exit 0
+        fi
     fi
     if [[ ${#sessions[@]} -eq 1 ]]; then
         if [[ $pick ]]; then
