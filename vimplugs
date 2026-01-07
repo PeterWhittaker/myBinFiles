@@ -8,6 +8,7 @@ OPTIND=1
 while getopts dC opt; do case $opt in
     d) doDebug="yes"    ;;
     C) doUpdate=""      ;;
+    *) >&2 echo "Unsupported option '$opt', ignoring"
 esac; done; shift $((OPTIND - 1))
 
 manifest="${1:-""}"
@@ -17,24 +18,25 @@ stdErr () {
     printf >&2 "%s\n" "${@}"
 }
 debug () {
-    [[ ${doDebug:+IS_SET} && $# -gt 0 ]] && stdErr "${@}" || true
+    [[ ${doDebug:+IS_SET} && $# -gt 0 ]] && stdErr "${@}"
+    true
 }
 
-# these next two are cool, I am keeping them for posterity,
-# even if I am not using them anymore....
-resetVariableIfComment () {
-    [[ $# -ne 1 ]] && return
-    local -n variable=$1
-    fC="${variable:0:1}"
-    [[ $fC == '#' || $fC == '"' ]] && variable="" || true
-}
-resetVariablesIfComment () {
-    local -n var
-    for var in ${*}; do
-        echo "'${var}'"
-        [[ ${var:+IS_SET} ]] && resetVariableIfComment ${!var} || true
-    done
-}
+## these next two are cool, I am keeping them for posterity,
+## even if I am not using them anymore....
+#resetVariableIfComment () {
+#    [[ $# -ne 1 ]] && return
+#    local -n variable=$1
+#    fC="${variable:0:1}"
+#    [[ $fC == '#' || $fC == '"' ]] && variable="" || true
+#}
+#resetVariablesIfComment () {
+#    local -n var
+#    for var in ${*}; do
+#        echo "'${var}'"
+#        [[ ${var:+IS_SET} ]] && resetVariableIfComment ${!var} || true
+#    done
+#}
 
 # I should define these at the shell level
 noOrEmptyFile () {
@@ -44,6 +46,7 @@ exitIfNoOrEmptyFile () {
     local label="file"
     local opt; OPTIND=1; while getopts l: opt; do case $opt in
         l) label="${OPTARG}" ;;
+        *) >&2 echo "Unsupported option '$opt', ignoring"
     esac; done; shift $((OPTIND - 1))
 
     noOrEmptyFile "${1:-""}" && { printf >&2 "Missing or empty %s, exiting" "${label}"; exit 1; }
@@ -60,29 +63,32 @@ processVimPlugin () {
         opt*|"") aOrO="-o" ;;
         *)       aOrO="-a" ;;
     esac
-    addOrUpdateVimPlug ${where} ${aOrO} $package
+    addOrUpdateVimPlug "${where}" ${aOrO} "$package"
 }
 
-# this should probably be a generic function....
-stripCommentsFromLine () {
-    local -n stripCommentsFromLine=$1
-
-    # strip any comments from the line; comments can begin with #
-    # (shell style) or " (vi/vim style); it doesn't matter which
-    # one we start with, just strip either comment marker and
-    # everything that follows it, first from the original line...
-
-    stripCommentsFromLine="${stripCommentsFromLine%%#*}"
-
-    # ...then strip the other comment marker, etc., from the
-    # stripped line, to make sure we handle both cases
-
-    stripCommentsFromLine="${stripCommentsFromLine%%\"*}"
-}
+# see note below where this is referenced in comment
+## this should probably be a generic function....
+#stripCommentsFromLine () {
+#    local -n stripCommentsFromLine=$1
+#
+#    # strip any comments from the line; comments can begin with #
+#    # (shell style) or " (vi/vim style); it doesn't matter which
+#    # one we start with, just strip either comment marker and
+#    # everything that follows it, first from the original line...
+#
+#    stripCommentsFromLine="${stripCommentsFromLine%%#*}"
+#
+#    # ...then strip the other comment marker, etc., from the
+#    # stripped line, to make sure we handle both cases
+#
+#    stripCommentsFromLine="${stripCommentsFromLine%%\"*}"
+#}
 
 validatePlugCount () {
-    local -i installCnt=$(addOrUpdateVimPlug -l | wc -l)
-    local -i wantedCnt=$(grep -c -v -e '^ *#' -e '^ *$' "${manifest}")
+    local -i installCnt
+    installCnt=$(addOrUpdateVimPlug -l | wc -l)
+    local -i wantedCnt
+    wantedCnt=$(grep -c -v -e '^ *#' -e '^ *$' "${manifest}")
     if [[ $installCnt -eq $wantedCnt ]]; then
         stdErr "Installation and wanted counts match."
         true
@@ -99,9 +105,11 @@ exitIfNoOrEmptyFile -l manifest "${manifest}"
     #stripCommentsFromLine line
     line="${line%%#*}"
     line="${line%%\"*}"
+    # shellcheck disable=SC2086 # we want the line to be split
     processVimPlugin ${line}
 done < "${manifest}"
 
+declare -i rc=0
 if [[ $doCount ]]; then
     validatePlugCount
     rc=$?
