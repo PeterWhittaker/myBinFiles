@@ -10,6 +10,8 @@ fi
 # idempotent
 # shellcheck disable=SC2088 # we want the exact string
 git config --global init.templatedir '~/.git_template'
+git config --global alias.tags '!git hook run ctags'
+git config --global alias.ic '!git init && git tags'
 HOOKDIR=~/.git_template/hooks
 mkdir -p "$HOOKDIR"
 CTAGS="$HOOKDIR/ctags"
@@ -24,7 +26,12 @@ if ! command -v ctags &> /dev/null; then
 fi
 dir="`git rev-parse --git-dir`"
 trap 'rm -f "$dir/tags.$$"' EXIT INT TERM
-git ls-files|ctags --tag-relative -L - -f$dir/tags.$$
+# process all tracked files in the repository (git ls-files),
+# reading tracked file names from stdin (-L -), creating a
+# temporary tags file in the repo's .git dir (-f$dir/tags.$$),
+# with tags relative to the .git dir (--tag-relative=yes makes
+# the tags relative to the directory containing the tags file).
+git ls-files|ctags --tag-relative=yes -L - -f$dir/tags.$$
 mv $dir/tags.$$ $dir/tags
 EOF
 chmod +x "$CTAGS"
